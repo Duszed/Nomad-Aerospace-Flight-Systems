@@ -34,8 +34,6 @@ graph TD
     D[77GHz 360 Radar] -->|CAN Bus| A
     E[ESP32-C3 Sensirion Field Node] -->|LoRa / WiFi| B
     B -->|Encrypted JSON| F[Nomad Cloud Analytics]
-```
-
 📂 Repository Structure
 /config - Production ArduPilot parameter stacks for 30L heavy-lift airframes.
 /telemetry - Ground gateway Python scripts and custom C++ edge-node firmware.
