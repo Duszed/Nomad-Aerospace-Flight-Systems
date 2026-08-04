@@ -37,17 +37,33 @@ graph TD
 ```
 
 📂 Repository Structure
+
+
 /config - Production ArduPilot parameter stacks for 30L heavy-lift airframes.
+
+
 /telemetry - Ground gateway Python scripts and custom C++ edge-node firmware.
 
+
 🛠 Advanced Features & Implementations
+
+
 1. Sensor Fusion & Failsafe Protocols
+
+
 GPS-Loss Failsafe: Automatic switch to AltHold with active LiDAR terrain-following and Radar boundary hold.
+
 Smart Battery Failsafe: Dual-stage voltage monitoring on high-voltage 18S systems.
+
 Variable Rate Application (VRA): Pump speed modulation tied directly to ground speed and microclimate data.
 
 2. Edge Telemetry Node (/telemetry)
+
+
 Custom C++ firmware developed for ultra-low-power ESP32-C3 RISC-V microcontrollers. Utilizing Sensirion SHT4x industrial I2C sensors with onboard micro-heaters, the node burns off morning dew to ensure 100% accurate field climate data. This guarantees spraying operations only occur during optimal agronomic windows.
 
+
 📄 Intellectual Property
+
+
 Copyright © 2026 Nomad Aerospace. All rights reserved. Hardware parameter profiles and custom telemetry firmware are licensed strictly for Nomad Aerospace deployment and partners.
