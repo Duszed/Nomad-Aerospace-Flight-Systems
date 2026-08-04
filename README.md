@@ -11,6 +11,7 @@ graph TD;
     E[ESP32 Field Node] -->|LoRa/WiFi| B;
     B -->|API/JSON| F[Cloud Analytics Dashboard];
     end
+    
 Nomad Aerospace engineers 30L / 60kg heavy-lift autonomous UAVs designed specifically for high-efficiency precision agriculture, crop dusting, and localized environmental telemetry across Central Asia.
 
 ### Key Hardware & Avionics Specifications
