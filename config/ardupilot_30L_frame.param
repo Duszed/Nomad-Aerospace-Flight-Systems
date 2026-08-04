@@ -1,8 +1,8 @@
 # NOMAD AEROSPACE — Production ArduPilot Parameter Stack
-# Airframe: Custom K Series By EFT Quadcopter (30L Payload)
+# Airframe: Custom K Frame By EFT Quadcopter (30L Payload)
 # Flight Controller: Hex Cube Orange+ (Triple-Redundant)
 # Propulsion: 4x Hobbywing X11 G2 FOC ESCs (18S DC)
-# Made: August 2026 | Location: Syrdarya, Uzbekistan
+# Made/Edited: August 2026 | Location: Syrdarya, Uzbekistan
 
 # ==========================================
 # 1. FRAME & SYSTEM ARCHITECTURE
@@ -50,10 +50,35 @@ PRX1_TYPE,2             # 2 = Proximity Radar over CAN bus
 PRX1_ORIENT,0           # 0 = Omnidirectional 360 setup
 
 # ==========================================
-# 5. SPRAY SYSTEM (VARIABLE RATE APPLICATION)
+# 5. HIGH-PRECISION NAVIGATION (HERE4 RTK)
+# ==========================================
+CAN_P1_DRIVER,1         # Enable CAN Bus 1 for DroneCAN architecture
+CAN_P2_DRIVER,1         # Enable CAN Bus 2 for Redundancy
+GPS_TYPE,9              # 9 = DroneCAN RTK GPS (Centimeter precision)
+GPS_GNSS_MODE,65        # Track GPS + GLONASS + Galileo + BeiDou
+
+# ==========================================
+# 6. SPRAY SYSTEM (VARIABLE RATE APPLICATION)
 # ==========================================
 # Centrifugal Atomizers and Brushless Pumps
 SERVO9_FUNCTION,22      # Map Servo Port 9 to Pump Control 1
 SERVO10_FUNCTION,23     # Map Servo Port 10 to Pump Control 2
 SPRAY_ENABLE,1          # Enable ArduPilot crop sprayer logic
 SPRAY_SPEED_MIN,200     # Minimum ground speed to trigger spray (cm/s)
+
+# ==========================================
+# 7. NDVI MULTISPECTRAL CAMERA (MAPIR SURVEY3)
+# ==========================================
+CAM_TRIGG_TYPE,1        # 1 = PWM trigger for NDVI camera shutter
+CAM_MIN_INTERVAL,2000   # 2 seconds minimum between multispectral captures
+SERVO11_FUNCTION,10     # Map Servo Port 11 to Camera Trigger
+CAM_AUTO_ONLY,1         # Only trigger camera during autonomous waypoint grid
+
+# ==========================================
+# 8. IOT TELEMETRY & GROUND GATEWAY ROUTING
+# ==========================================
+# Routing data to Nomad Aerospace Python Ground Station & ESP32 Nodes
+SERIAL2_PROTOCOL,2      # 2 = MAVLink 2.0 (High-bandwidth telemetry)
+SERIAL2_BAUD,57         # 57600 baud rate for 915MHz long-range link
+SR2_EXTRA1,10           # Stream sensor fusion data to ground at 10Hz
+SR2_POSITION,5          # Stream RTK GPS coordinates to ground at 5Hz
