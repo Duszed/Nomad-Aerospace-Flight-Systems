@@ -3,7 +3,14 @@ Welcome to the official core flight system documentation and custom telemetry fi
 ---
 
 ## 🚀 System Overview
-
+graph TD;
+    subgraph Nomad Aerospace Ecosystem
+    A[Cube Orange+ Flight Controller] -->|MAVLink via 915MHz| B(Nomad Ground Control Station);
+    C[Benewake TF03 LiDAR] -->|CAN Bus| A;
+    D[77GHz 360 Radar] -->|CAN Bus| A;
+    E[ESP32 Field Node] -->|LoRa/WiFi| B;
+    B -->|API/JSON| F[Cloud Analytics Dashboard];
+    end
 Nomad Aerospace engineers 30L / 60kg heavy-lift autonomous UAVs designed specifically for high-efficiency precision agriculture, crop dusting, and localized environmental telemetry across Central Asia.
 
 ### Key Hardware & Avionics Specifications
