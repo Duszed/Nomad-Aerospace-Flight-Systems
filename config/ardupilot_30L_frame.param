@@ -1,1 +1,59 @@
+# NOMAD AEROSPACE — Production ArduPilot Parameter Stack
+# Airframe: EFT K30 Quadcopter (30L Payload)
+# Flight Controller: Hex Cube Orange+ (Triple-Redundant)
+# Propulsion: 4x Hobbywing X11 G2 FOC ESCs (18S DC)
+# Generated: August 2026 | Location: Syrdarya, Uzbekistan
 
+# ==========================================
+# 1. FRAME & SYSTEM ARCHITECTURE
+# ==========================================
+FRAME_CLASS,1           # 1 = Quadcopter
+FRAME_TYPE,1            # 1 = X Configuration
+SYSID_THISMAV,1         # MAVLink System ID for Ground Control
+AHRS_EKF_TYPE,3         # Use EKF3 (Advanced Kalman Filter for Sensor Fusion)
+EK2_ENABLE,0            # Disable legacy EKF2
+EK3_ENABLE,1            # Enable triple-redundant EKF3
+
+# ==========================================
+# 2. PROPULSION & ESC (HOBBYWING FOC)
+# ==========================================
+MOT_PWM_TYPE,6          # 6 = DShot600 (Digital protocol for instant FOC response)
+MOT_SPIN_ARM,0.08       # 8% throttle idle when armed (prevents stall)
+MOT_SPIN_MIN,0.12       # 12% minimum flight throttle
+MOT_THST_EXPO,0.75      # Thrust curve linearization for heavy 34inch props
+MOT_HOVER_LEARN,2       # Auto-learn hover thrust (crucial for sloshing 30L liquid payload)
+
+# ==========================================
+# 3. 18S POWER SYSTEM & FAILSAFES
+# ==========================================
+BATT_MONITOR,4          # 4 = Analog Voltage and Current
+BATT_CAPACITY,30000     # 30,000mAh Heavy-Lift Solid State / LiPo
+BATT_ARM_VOLT,64.8      # Pre-flight check: Prevent takeoff if below 3.6v/cell
+BATT_FS_LOW_VOLT,61.2   # Warning trigger: 3.4v/cell (Return to Launch)
+BATT_FS_CRT_VOLT,59.4   # Critical trigger: 3.3v/cell (Immediate Auto-Land)
+BATT_FS_LOW_ACT,1       # Action = RTL (Return to Launch)
+BATT_FS_CRT_ACT,2       # Action = Land
+
+# ==========================================
+# 4. SENSOR FUSION (LiDAR & RADAR)
+# ==========================================
+# Altimeter: Benewake TF03 Long-Range LiDAR
+RNGFND1_TYPE,20         # 20 = Serial/UART protocol
+RNGFND1_MIN_CM,20       # Minimum range (20cm)
+RNGFND1_MAX_CM,10000    # Maximum range (100 meters)
+RNGFND1_GNDCLEAR,15     # Clearance of LiDAR from ground when landed
+RNGFND1_ORIENT,25       # 25 = Pointing straight down
+
+# Obstacle Avoidance: 360-Degree 77GHz Millimeter-Wave Radar
+AVOID_ENABLE,7          # Enable all avoidance features (Slide, Stop, Failsafe)
+PRX1_TYPE,2             # 2 = Proximity Radar over CAN bus
+PRX1_ORIENT,0           # 0 = Omnidirectional 360 setup
+
+# ==========================================
+# 5. SPRAY SYSTEM (VARIABLE RATE APPLICATION)
+# ==========================================
+# Centrifugal Atomizers and Brushless Pumps
+SERVO9_FUNCTION,22      # Map Servo Port 9 to Pump Control 1
+SERVO10_FUNCTION,23     # Map Servo Port 10 to Pump Control 2
+SPRAY_ENABLE,1          # Enable ArduPilot crop sprayer logic
+SPRAY_SPEED_MIN,200     # Minimum ground speed to trigger spray (cm/s)
