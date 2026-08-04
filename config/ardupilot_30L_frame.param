@@ -1,8 +1,8 @@
 # NOMAD AEROSPACE — Production ArduPilot Parameter Stack
-# Airframe: EFT K30 Quadcopter (30L Payload)
+# Airframe: Custom K Series By EFT Quadcopter (30L Payload)
 # Flight Controller: Hex Cube Orange+ (Triple-Redundant)
 # Propulsion: 4x Hobbywing X11 G2 FOC ESCs (18S DC)
-# Generated: August 2026 | Location: Syrdarya, Uzbekistan
+# Made: August 2026 | Location: Syrdarya, Uzbekistan
 
 # ==========================================
 # 1. FRAME & SYSTEM ARCHITECTURE
