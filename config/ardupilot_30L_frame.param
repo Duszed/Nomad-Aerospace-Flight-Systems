@@ -24,13 +24,13 @@ MOT_THST_EXPO,0.75      # Thrust curve linearization for heavy 34inch props
 MOT_HOVER_LEARN,2       # Auto-learn hover thrust (crucial for sloshing 30L liquid payload)
 
 # ==========================================
-# 3. 18S POWER SYSTEM & FAILSAFES
+# 3. 14S POWER SYSTEM & FAILSAFES
 # ==========================================
 BATT_MONITOR,4          # 4 = Analog Voltage and Current
-BATT_CAPACITY,30000     # 30,000mAh Heavy-Lift Solid State / LiPo
-BATT_ARM_VOLT,64.8      # Pre-flight check: Prevent takeoff if below 3.6v/cell
-BATT_FS_LOW_VOLT,61.2   # Warning trigger: 3.4v/cell (Return to Launch)
-BATT_FS_CRT_VOLT,59.4   # Critical trigger: 3.3v/cell (Immediate Auto-Land)
+BATT_CAPACITY,30000     # 30,000mAh Heavy-Lift 14S LiPo
+BATT_ARM_VOLT,50.4      # Pre-flight check: Prevent takeoff if below 3.6v/cell
+BATT_FS_LOW_VOLT,47.6   # Warning trigger: 3.4v/cell (Return to Launch)
+BATT_FS_CRT_VOLT,46.2   # Critical trigger: 3.3v/cell (Immediate Auto-Land)
 BATT_FS_LOW_ACT,1       # Action = RTL (Return to Launch)
 BATT_FS_CRT_ACT,2       # Action = Land
 
