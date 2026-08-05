@@ -67,15 +67,21 @@ Custom C++ firmware developed for ultra-low-power **ESP32-C6 RISC-V** microcontr
 <br>
 
 **Field Node Microcontroller: ESP32-C6 (Zigbee/Thread Enabled)**
+<br>
 ![ESP32-C6 Architecture](assets/esp32_c6_pinout.png)
 
 <br>
 
 **Sensor Payload: Sensirion SHT40 (Industrial I2C with Micro-Heater)**
-![Sensirion SHT40](assets/sht40_sensor.png)
+<br>
+![Sensirion SHT40](assets/esp32_sensor_node.png)
 
 <br>
-![ESP32 Telemetry Node](assets/esp32_sensor_node.png)
 
-📄 Intellectual Property
+---
+
+<br>
+
+## 📄 Intellectual Property
+
 Copyright © 2026 Nomad Aerospace. All rights reserved. Hardware parameter profiles and custom telemetry firmware are licensed strictly for Nomad Aerospace deployment and partners.
