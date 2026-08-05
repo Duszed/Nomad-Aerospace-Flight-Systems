@@ -35,6 +35,11 @@ graph TD
     E[ESP32-C3 Sensirion Field Node] -->|LoRa / WiFi| B
     B -->|Encrypted JSON| F[Nomad Cloud Analytics]
 ```
+Aerospace Avionics Stack
+Triple-redundant isolated IMUs paired with dual DroneCAN RTK GNSS for centimeter-level precision.
+<br>
+![alt text](assets/cube_orange_stack.png)
+<br>
 
 📏 Hardware Blueprints & Airframe CAD
 Airframe Chassis: EFT K30 (30-Liter Payload Capacity)
