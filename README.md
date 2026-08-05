@@ -62,6 +62,17 @@ Smart Battery Failsafe: Dual-stage voltage monitoring on high-voltage 14S system
 Variable Rate Application (VRA): Pump speed modulation tied directly to ground speed and microclimate data.
 ### 2. Edge Telemetry Node (`/telemetry`)
 Custom C++ firmware developed for ultra-low-power **ESP32-C6 RISC-V** microcontrollers. Utilizing onboard Zigbee/Thread mesh networking, these nodes form a self-healing field network. Paired with Sensirion SHT40 industrial I2C sensors featuring onboard micro-heaters, the nodes burn off morning dew to ensure 100% accurate field climate data. 
+
+<br>
+
+**Field Node Microcontroller: ESP32-C6 (Zigbee/Thread Enabled)**
+![ESP32-C6 Architecture](assets/esp32_c6_pinout.png)
+
+<br>
+
+**Sensor Payload: Sensirion SHT40 (Industrial I2C with Micro-Heater)**
+![Sensirion SHT40](assets/sht40_sensor.png)
+
 <br>
 ![ESP32 Telemetry Node](assets/esp32_sensor_node.png)
 
