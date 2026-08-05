@@ -39,18 +39,18 @@ graph TD
 📏 Hardware Blueprints & Airframe CAD
 Airframe Chassis: EFT K30 (30-Liter Payload Capacity)
 Motor-to-motor diagonal span: 1781mm | Operational footprint: 1.3 x 1.3 meters
-![alt text](k30_blueprint.png)
+![alt text](assets/k30_blueprint.png)
 ⚡ Propulsion Performance & Empirical Thrust Data
 Hobbywing X11 G2 (14S DC) paired with 43x14 Folding Carbon-Polymer Propellers.
 1. Empirical Dynamometer Thrust Curves (54V Nominal)
 At our target hover weight of 15.5 kg/axis (60kg Total All-Up Weight), the propulsion system draws ~51 Amps at an efficiency of 7.8 g/W, leaving over 30kg/axis of peak thrust headroom for safety maneuvers.
-![alt text](thrust_graph_54v.png)
+![alt text](assets/thrust_graph_54v.png)
 2. Integrated FOC Motor Mount & ESC Architecture
 45.1mm carbon-tube clamp, integrated FOC ESC cooling housing, and 12AWG heavy-current power routing.
-![alt text](x11_motor_mount_cad.png)
+![alt text](assets/x11_motor_mount_cad.png)
 3. 43-Inch Aerodynamic Propeller Geometry
 Blade length: 1082mm | Pitch: 14 inches | Dual-bolt carbon hub mount
-![alt text](propeller_43inch_cad.png)
+![alt text](assets/propeller_43inch_cad.png)
 📂 Repository Structure
 /config - Production ArduPilot parameter stacks for 30L heavy-lift airframes.
 /telemetry - Ground gateway Python scripts and custom C++ edge-node firmware.
