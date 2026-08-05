@@ -35,6 +35,7 @@ graph TD
     E[ESP32-C3 Sensirion Field Node] -->|LoRa / WiFi| B
     B -->|Encrypted JSON| F[Nomad Cloud Analytics]
 ```
+
 📏 Hardware Blueprints & Airframe CAD
 Airframe Chassis: EFT K30 (30-Liter Payload Capacity)
 Motor-to-motor diagonal span: 1781mm | Operational footprint: 1.3 x 1.3 meters
