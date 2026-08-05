@@ -60,7 +60,10 @@ Blade length: 1082mm | Pitch: 14 inches | Dual-bolt carbon hub mount
 GPS-Loss Failsafe: Automatic switch to AltHold with active LiDAR terrain-following and Radar boundary hold.
 Smart Battery Failsafe: Dual-stage voltage monitoring on high-voltage 14S systems.
 Variable Rate Application (VRA): Pump speed modulation tied directly to ground speed and microclimate data.
-2. Edge Telemetry Node (/telemetry)
-Custom C++ firmware developed for ultra-low-power ESP32-C3 RISC-V microcontrollers. Utilizing Sensirion SHT4x industrial I2C sensors with onboard micro-heaters, the node burns off morning dew to ensure 100% accurate field climate data. This guarantees spraying operations only occur during optimal agronomic windows.
+### 2. Edge Telemetry Node (`/telemetry`)
+Custom C++ firmware developed for ultra-low-power **ESP32-C6 RISC-V** microcontrollers. Utilizing onboard Zigbee/Thread mesh networking, these nodes form a self-healing field network. Paired with Sensirion SHT40 industrial I2C sensors featuring onboard micro-heaters, the nodes burn off morning dew to ensure 100% accurate field climate data. 
+<br>
+![ESP32 Telemetry Node](assets/esp32_sensor_node.png)
+
 📄 Intellectual Property
 Copyright © 2026 Nomad Aerospace. All rights reserved. Hardware parameter profiles and custom telemetry firmware are licensed strictly for Nomad Aerospace deployment and partners.
