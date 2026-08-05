@@ -40,8 +40,6 @@ Triple-redundant isolated IMUs paired with dual DroneCAN RTK GNSS for centimeter
 <br>
 ![alt text](assets/cube_orange_stack.png)
 <br>
-<br>
-
 📏 Hardware Blueprints & Airframe CAD
 Airframe Chassis: EFT K30 (30-Liter Payload Capacity)
 Motor-to-motor diagonal span: 1781mm | Operational footprint: 1.3 x 1.3 meters
