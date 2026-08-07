@@ -1,6 +1,6 @@
-; Nomad Aerospace - Telemetry Node Build Environment
-; Architecture: ESP32-C3 (RISC-V)
-; Build Engine: PlatformIO
+; Nomad Aerospace - Field Telemetry Node Build Environment
+; MCU: ESP32-C3 (RISC-V) - see SPECS.md
+; ; root (no trailing characters) or PlatformIO will not detect it.
 
 [env:esp32-c3-devkitm-1]
 platform = espressif32
@@ -8,8 +8,6 @@ board = esp32-c3-devkitm-1
 framework = arduino
 monitor_speed = 115200
 
-; Cloud Dependency Manager
-; These libraries are automatically fetched during the build process
 lib_deps =
     adafruit/Adafruit SHT4x Library @ ^1.0.4
     adafruit/Adafruit BusIO @ ^1.14.1
