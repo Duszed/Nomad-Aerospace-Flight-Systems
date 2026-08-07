@@ -48,7 +48,7 @@ graph TD
 **Airframe Chassis: EFT K30 (30-Liter Payload Capacity)**
 Motor to motor diagonal span: 1781 mm | Operational footprint: 1.3 × 1.3 m
 
-![K30 blueprint](assets/k30_blueprint.png)
+![K30 blueprint](assets/k30_blueprint.png.)
 
 ## ⚡ Propulsion Performance
 
