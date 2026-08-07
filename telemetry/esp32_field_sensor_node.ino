@@ -1,10 +1,13 @@
 /**
- * Nomad Aerospace - Field Telemetry Sensor Node (Gen 2, Rev B)
+ * Nomad Aerospace - Field Telemetry Sensor Node (Gen 2, Rev C)
  * ------------------------------------------------------------
- * MCU     : ESP32-C3 (RISC-V, single core) - see SPECS.md
+ * MCU     : ESP32-C6 (RISC-V) - see SPECS.md
+ *           Selected for its 802.15.4 radio: the node is HARDWARE-READY
+ *           for a Zigbee/Thread mesh upgrade with no board change.
+ *           Mesh firmware is NOT implemented yet - see roadmap.
  * Sensor  : Sensirion SHT4x (I2C temp/RH, on-die micro-heater)
  * Radio   : ESP-NOW point-to-point uplink to the Nomad ground gateway
- *           (LoRaWAN is the long-range upgrade path on the roadmap)
+ *           (implemented and working today)
  * Power   : 18650 Li-Ion, deep-sleep duty cycle, ADC battery monitor
  *
  * Condensation handling (done correctly):
@@ -26,12 +29,14 @@
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-#define NODE_ID              "NOMAD-FIELD-C3-01"
+#define NODE_ID              "NOMAD-FIELD-C6-01"
 #define SLEEP_DURATION_SEC   300          // 5-minute duty cycle
-#define I2C_SDA              8
-#define I2C_SCL              9
+// [CAL] ESP32-C6 pin map differs from C3 - confirm against your devkit
+// silkscreen before wiring. Any free GPIO can be remapped here.
+#define I2C_SDA              6
+#define I2C_SCL              7
 
-#define BATT_ADC_PIN         3            // ADC1 pin via divider
+#define BATT_ADC_PIN         1            // must be ADC1-capable on C6
 #define BATT_DIVIDER_RATIO   2.0f         // 2x 100k divider: Vbat = Vadc * 2
 
 #define DEW_RH_THRESHOLD     95.0f        // %RH above which we suspect dew
@@ -54,7 +59,7 @@ void setup() {
   Serial.begin(115200);
   delay(50);
   bootCount++;
-  Serial.printf("\n[NOMAD] Field node boot #%lu\n", (unsigned long)bootCount);
+  Serial.printf("\n[NOMAD] Field node (C6) boot #%lu\n", (unsigned long)bootCount);
 
   Wire.begin(I2C_SDA, I2C_SCL);
 
