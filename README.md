@@ -25,8 +25,7 @@ built on an open ArduPilot avionics core with locally assembled hardware.
 * **Navigation:** CubePilot Here4 RTK GNSS (DroneCAN, centimetre class)
 * **Terrain Altimetry:** Benewake TF03 long-range LiDAR (UART) canopy relative height hold
 * **Obstacle Detection:** Nanoradar MR72 77 GHz forward-sector radar (dedicated CAN bus)
-* **Field Edge Nodes:** ESP32-C3 (RISC-V) + Sensirion SHT4x, ESP-NOW uplink
-
+* **Field Edge Nodes:** ESP32-C6 (RISC-V, 802.15.4-capable) + Sensirion SHT4x, ESP-NOW uplink
 ---
 
 ## 🏗️ Hardware Ecosystem Architecture
@@ -37,7 +36,7 @@ graph TD
     C[Benewake TF03 LiDAR] -->|UART SERIAL4| A
     D[Nanoradar MR72 77GHz] -->|RadarCAN CAN2| A
     G[Here4 RTK GNSS] -->|DroneCAN CAN1| A
-    E[ESP32-C3 Field Node] -->|ESP-NOW| B
+    E[ESP32-C6 Field Node] -->|ESP-NOW| B
     B -->|NDJSON stream| F[Nomad Analytics & VRA Database]
 ```
 
@@ -102,13 +101,13 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
   over uneven ground during autonomous missions.
 * **Speed-proportional application:** pump flow scales with ground speed
   for uniform L/ha; spray auto-cuts below 1 m/s to prevent row-end pooling.
-* **Field microclimate telemetry:** ESP32-C3 edge nodes wake every 5
+* **Field microclimate telemetry:** ESP32-C6 edge nodes wake every 5
   minutes, sample temperature/humidity, and push readings to the ground
   gateway over ESP-NOW for spray-window decision support.
 
 ### Edge Telemetry Node (`/telemetry`)
 
-Ultra-low-power **ESP32-C3 (RISC-V)** nodes with **Sensirion SHT4x**
+Ultra-low-power **ESP32-C6 (RISC-V)** nodes with **Sensirion SHT4x**
 sensors. A conditional micro-heater routine detects condensation
 (RH ≥ 95%), pulses the sensor heater, waits for thermal settling, and
 re-samples preserving reading accuracy in morning dew conditions
@@ -122,6 +121,7 @@ long-range upgrade path on the roadmap.
 ## 🗺 Roadmap (not yet implemented)
 
 * 360° radar coverage (multi unit ring)
+* Zigbee/Thread mesh firmware (Hardware already capable)
 * LoRaWAN long range field mesh
 * Encrypted telemetry transport
 * SITL-validated autonomous mission library (`/missions`)
