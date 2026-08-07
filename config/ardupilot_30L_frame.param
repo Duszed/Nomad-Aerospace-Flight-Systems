@@ -1,84 +1,301 @@
-# NOMAD AEROSPACE — Production ArduPilot Parameter Stack
-# Airframe: Custom K Frame By EFT Quadcopter (30L Payload)
-# Flight Controller: Hex Cube Orange+ (Triple-Redundant)
-# Propulsion: 4x Hobbywing X11 G2 FOC ESCs (18S DC)
-# Made/Edited: August 2026 | Location: Syrdarya, Uzbekistan
+# =====================================================================
+#  NOMAD AEROSPACE - NOMAD K30
+#  Agricultural Spraying UAS, 30 L Payload
+#  Flight Control Reference Configuration  |  Rev B, August 2026
+#  Governing document: SPECS.md (single source of truth)
+# =====================================================================
+#  Airframe      : EFT K30 quadcopter frame, X configuration
+#  Autopilot     : Hex Cube Orange+ (triple IMU, dual barometer)
+#  Firmware      : ArduCopter 4.5.x (stable)
+#  Propulsion    : 4x Hobbywing X11 G2 FOC power systems, 14S
+#  Battery       : 14S 30,000 mAh smart LiPo
+#  GNSS          : CubePilot Here4 RTK, DroneCAN (CAN1)
+#  Radar         : Nanoradar MR72 77 GHz obstacle radar (CAN2)
+#  Altimeter     : Benewake TF03 LiDAR, 100 m (SERIAL4)
+#  Spray system  : Brushless pump + centrifugal atomiser discs
+#  Survey camera : MAPIR Survey3 NDVI, PWM shutter trigger
+#  Telemetry     : MAVLink 2 long-range link to ground gateway
+# ---------------------------------------------------------------------
+#  BUS ARCHITECTURE
+#    CAN1  DroneCAN     -> Here4 RTK GNSS / compass
+#    CAN2  RadarCAN     -> MR72 obstacle radar (dedicated bus)
+#    ESC telemetry      -> Hobbywing DataLink (independent of FC)
+#    SERIAL2            -> MAVLink 2 telemetry downlink
+#    SERIAL4            -> TF03 LiDAR altimeter
+# =====================================================================
 
-# ==========================================
-# 1. FRAME & SYSTEM ARCHITECTURE
-# ==========================================
-FRAME_CLASS,1           # 1 = Quadcopter
-FRAME_TYPE,1            # 1 = X Configuration
-SYSID_THISMAV,1         # MAVLink System ID for Ground Control
-AHRS_EKF_TYPE,3         # Use EKF3 (Advanced Kalman Filter for Sensor Fusion)
-EK2_ENABLE,0            # Disable legacy EKF2
-EK3_ENABLE,1            # Enable triple-redundant EKF3
 
-# ==========================================
-# 2. PROPULSION & ESC (HOBBYWING FOC)
-# ==========================================
-MOT_PWM_TYPE,6          # 6 = DShot600 (Digital protocol for instant FOC response)
-MOT_SPIN_ARM,0.08       # 8% throttle idle when armed (prevents stall)
-MOT_SPIN_MIN,0.12       # 12% minimum flight throttle
-MOT_THST_EXPO,0.75      # Thrust curve linearization for heavy 34inch props
-MOT_HOVER_LEARN,2       # Auto-learn hover thrust (crucial for sloshing 30L liquid payload)
+# ---------------------------------------------------------------------
+#  1. FRAME AND CORE SYSTEM
+# ---------------------------------------------------------------------
+FRAME_CLASS,1
+FRAME_TYPE,1
+SYSID_THISMAV,1
+AHRS_EKF_TYPE,3
+EK3_ENABLE,1
+EK2_ENABLE,0
+# Quadcopter, X layout. EKF3 state estimation fusing triple IMU,
+# dual baro, RTK GNSS, compass and LiDAR altitude.
 
-# ==========================================
-# 3. 14S POWER SYSTEM & FAILSAFES
-# ==========================================
-BATT_MONITOR,4          # 4 = Analog Voltage and Current
-BATT_CAPACITY,30000     # 30,000mAh Heavy-Lift 14S LiPo
-BATT_ARM_VOLT,50.4      # Pre-flight check: Prevent takeoff if below 3.6v/cell
-BATT_FS_LOW_VOLT,47.6   # Warning trigger: 3.4v/cell (Return to Launch)
-BATT_FS_CRT_VOLT,46.2   # Critical trigger: 3.3v/cell (Immediate Auto-Land)
-BATT_FS_LOW_ACT,1       # Action = RTL (Return to Launch)
-BATT_FS_CRT_ACT,2       # Action = Land
 
-# ==========================================
-# 4. SENSOR FUSION (LiDAR & RADAR)
-# ==========================================
-# Altimeter: Benewake TF03 Long-Range LiDAR
-RNGFND1_TYPE,20         # 20 = Serial/UART protocol
-RNGFND1_MIN_CM,20       # Minimum range (20cm)
-RNGFND1_MAX_CM,10000    # Maximum range (100 meters)
-RNGFND1_GNDCLEAR,15     # Clearance of LiDAR from ground when landed
-RNGFND1_ORIENT,25       # 25 = Pointing straight down
+# ---------------------------------------------------------------------
+#  2. PROPULSION - HOBBYWING X11 G2 (PWM COMMAND, FOC DRIVE)
+# ---------------------------------------------------------------------
+SERVO1_FUNCTION,33
+SERVO2_FUNCTION,34
+SERVO3_FUNCTION,35
+SERVO4_FUNCTION,36
+# Motors 1-4 on MAIN OUT 1-4
+MOT_PWM_TYPE,0
+MOT_PWM_MIN,1100
+MOT_PWM_MAX,1940
+# X11 G2 accepts standard PWM throttle (1100-1940 us). FOC commutation
+# is internal to the ESC; motor telemetry is handled by the Hobbywing
+# DataLink on its own bus.
+MOT_SPIN_ARM,0.08
+MOT_SPIN_MIN,0.12
+MOT_SPIN_MAX,0.95
+# 8% armed idle prevents large-prop cogging; 12% floor keeps all four
+# rotors in their stable control band throughout flight.
+MOT_THST_EXPO,0.2
+# Low expo by design: the FOC controllers already linearise thrust
+# response, so only residual propeller nonlinearity is corrected here.
+MOT_HOVER_LEARN,2
+MOT_THST_HOVER,0.25
+# Hover thrust continuously learned and saved - essential on a sprayer
+# whose mass drops ~30 kg over a single mission as the tank empties.
+MOT_BAT_VOLT_MAX,58.8
+MOT_BAT_VOLT_MIN,44.8
+# Thrust scaling across the 14S discharge curve (4.2-3.2 V/cell):
+# identical stick response on a full pack and a nearly empty one.
 
-# Obstacle Avoidance: 360-Degree 77GHz Millimeter-Wave Radar
-AVOID_ENABLE,7          # Enable all avoidance features (Slide, Stop, Failsafe)
-PRX1_TYPE,2             # 2 = Proximity Radar over CAN bus
-PRX1_ORIENT,0           # 0 = Omnidirectional 360 setup
 
-# ==========================================
-# 5. HIGH-PRECISION NAVIGATION (HERE4 RTK)
-# ==========================================
-CAN_P1_DRIVER,1         # Enable CAN Bus 1 for DroneCAN architecture
-CAN_P2_DRIVER,1         # Enable CAN Bus 2 for Redundancy
-GPS_TYPE,9              # 9 = DroneCAN RTK GPS (Centimeter precision)
-GPS_GNSS_MODE,65        # Track GPS + GLONASS + Galileo + BeiDou
+# ---------------------------------------------------------------------
+#  3. 14S POWER SYSTEM AND BATTERY FAILSAFE LADDER
+# ---------------------------------------------------------------------
+BATT_MONITOR,4
+BATT_CAPACITY,30000
+BATT_ARM_VOLT,50.4
+# Arming gate: takeoff refused below 3.6 V/cell.
+BATT_LOW_VOLT,47.6
+BATT_FS_LOW_ACT,2
+# LOW stage, 3.4 V/cell: Return to Launch while energy remains to
+# fly home with the remaining payload.
+BATT_CRT_VOLT,46.2
+BATT_FS_CRT_ACT,1
+# CRITICAL stage, 3.3 V/cell: immediate controlled landing. The
+# aircraft is never asked to transit on a depleted pack.
+BATT_FS_VOLTSRC,1
+BATT_LOW_TIMER,10
+# Failsafe voltage is sag-compensated and time-filtered (10 s), so
+# 100 A+ spray-run transients under full tank load cannot trigger a
+# false abort mid-swath.
 
-# ==========================================
-# 6. SPRAY SYSTEM (VARIABLE RATE APPLICATION)
-# ==========================================
-# Centrifugal Atomizers and Brushless Pumps
-SERVO9_FUNCTION,22      # Map Servo Port 9 to Pump Control 1
-SERVO10_FUNCTION,23     # Map Servo Port 10 to Pump Control 2
-SPRAY_ENABLE,1          # Enable ArduPilot crop sprayer logic
-SPRAY_SPEED_MIN,200     # Minimum ground speed to trigger spray (cm/s)
 
-# ==========================================
-# 7. NDVI MULTISPECTRAL CAMERA (MAPIR SURVEY3)
-# ==========================================
-CAM_TRIGG_TYPE,1        # 1 = PWM trigger for NDVI camera shutter
-CAM_MIN_INTERVAL,2000   # 2 seconds minimum between multispectral captures
-SERVO11_FUNCTION,10     # Map Servo Port 11 to Camera Trigger
-CAM_AUTO_ONLY,1         # Only trigger camera during autonomous waypoint grid
+# ---------------------------------------------------------------------
+#  4. CAN BACKBONE
+# ---------------------------------------------------------------------
+CAN_P1_DRIVER,1
+CAN_D1_PROTOCOL,1
+# CAN1: DroneCAN bus for Here4 RTK GNSS + integrated compass.
+CAN_P2_DRIVER,2
+CAN_P2_BITRATE,500000
+CAN_D2_PROTOCOL,14
+# CAN2: dedicated RadarCAN bus (protocol 14) for the MR72. The radar
+# is not a DroneCAN device and holds this port exclusively.
 
-# ==========================================
-# 8. IOT TELEMETRY & GROUND GATEWAY ROUTING
-# ==========================================
-# Routing data to Nomad Aerospace Python Ground Station & ESP32 Nodes
-SERIAL2_PROTOCOL,2      # 2 = MAVLink 2.0 (High-bandwidth telemetry)
-SERIAL2_BAUD,57         # 57600 baud rate for 915MHz long-range link
-SR2_EXTRA1,10           # Stream sensor fusion data to ground at 10Hz
-SR2_POSITION,5          # Stream RTK GPS coordinates to ground at 5Hz
+
+# ---------------------------------------------------------------------
+#  5. RTK NAVIGATION - HERE4 (CENTIMETRE-CLASS)
+# ---------------------------------------------------------------------
+GPS1_TYPE,9
+GPS_AUTO_CONFIG,1
+# DroneCAN RTK GNSS. Multi-constellation tracking (GPS, GLONASS,
+# Galileo, BeiDou) is configured on the Here4 node itself; RTCM3
+# corrections are injected from the base station over the MAVLink
+# telemetry link for centimetre-level swath repeatability.
+
+
+# ---------------------------------------------------------------------
+#  6. TERRAIN-FOLLOWING ALTIMETER - BENEWAKE TF03
+# ---------------------------------------------------------------------
+SERIAL4_PROTOCOL,9
+SERIAL4_BAUD,115
+RNGFND1_TYPE,27
+RNGFND1_ORIENT,25
+RNGFND1_MIN_CM,20
+RNGFND1_MAX_CM,8000
+RNGFND1_GNDCLEAR,15
+# TF03 long-range LiDAR, downward-facing, 0.2-80 m working band.
+WPNAV_RFND_USE,1
+SURFTRAK_MODE,1
+# Canopy-relative height hold: LiDAR drives terrain following in
+# autonomous spray missions and surface tracking in pilot modes,
+# keeping nozzle height constant over uneven ground.
+
+
+# ---------------------------------------------------------------------
+#  7. OBSTACLE AVOIDANCE - NANORADAR MR72 77 GHz
+# ---------------------------------------------------------------------
+PRX1_TYPE,17
+PRX1_ORIENT,0
+PRX1_YAW_CORR,0
+# MR72 forward-sector millimetre-wave radar: dust-, spray- and
+# light-immune obstacle detection to 40 m.
+AVOID_ENABLE,2
+AVOID_BEHAVE,1
+AVOID_MARGIN,3
+AVOID_DIST_MAX,8
+# Proximity avoidance active in pilot-assisted modes: the aircraft
+# STOPS 3 m short of an obstacle rather than sliding around it -
+# the correct behaviour between crop rows, poles and power lines.
+
+
+# ---------------------------------------------------------------------
+#  8. VARIABLE-RATE SPRAY SYSTEM
+# ---------------------------------------------------------------------
+SPRAY_ENABLE,1
+SERVO9_FUNCTION,22
+# AUX 1: brushless pump, flow slaved to ground speed.
+SERVO10_FUNCTION,23
+# AUX 2: centrifugal atomiser discs, constant droplet spectrum.
+SPRAY_PUMP_RATE,100
+SPRAY_PUMP_MIN,10
+SPRAY_SPINNER,1300
+SPRAY_SPEED_MIN,100
+# Speed-proportional application: flow scales with ground speed for
+# uniform L/ha; spray auto-cuts below 1 m/s so turns at row ends
+# never pool chemical on the crop.
+RC7_OPTION,15
+# Pilot master spray switch on RC channel 7.
+
+
+# ---------------------------------------------------------------------
+#  9. NDVI SURVEY PAYLOAD - MAPIR SURVEY3
+# ---------------------------------------------------------------------
+CAM1_TYPE,1
+SERVO11_FUNCTION,10
+CAM1_SERVO_ON_PWM,1900
+CAM1_SERVO_OFF_PWM,1100
+CAM1_DURATION,0.1
+CAM1_INTRVL_MIN,2
+# PWM shutter trigger on AUX 3, minimum 2 s between multispectral
+# captures. Survey missions command distance-based triggering via
+# DO_SET_CAM_TRIGG_DIST for uniform NDVI ground coverage.
+
+
+# ---------------------------------------------------------------------
+#  10. VIBRATION MANAGEMENT AND ATTITUDE CONTROL (43x14 in ROTORS)
+# ---------------------------------------------------------------------
+INS_GYRO_FILTER,10
+INS_ACCEL_FILTER,10
+# Filter bandwidth halved from small-UAS defaults to match the low
+# structural and rotor frequencies of a 30 L-class airframe.
+INS_HNTCH_ENABLE,1
+INS_HNTCH_MODE,1
+INS_HNTCH_FREQ,22
+INS_HNTCH_BW,11
+INS_HNTCH_REF,0.25
+INS_HNTCH_HMNCS,3
+# Throttle-tracking harmonic notch centred on the ~1300-1500 rpm hover
+# band of the 43x14 in propellers (~22 Hz fundamental) plus second
+# harmonic: rotor vibration is removed from the control path instead
+# of leaking into the motors as heat and oscillation. Exact centre
+# frequency is confirmed by in-flight FFT during commissioning.
+ATC_ACCEL_R_MAX,30000
+ATC_ACCEL_P_MAX,30000
+ATC_ACCEL_Y_MAX,9000
+ATC_INPUT_TC,0.3
+ANGLE_MAX,2500
+# Rotational acceleration limits and a 25 deg lean ceiling sized for
+# high-inertia flight with 30 L of sloshing liquid.
+ATC_RAT_RLL_P,0.10
+ATC_RAT_RLL_I,0.10
+ATC_RAT_RLL_D,0.004
+ATC_RAT_PIT_P,0.10
+ATC_RAT_PIT_I,0.10
+ATC_RAT_PIT_D,0.004
+ATC_RAT_RLL_FLTD,5
+ATC_RAT_RLL_FLTT,5
+ATC_RAT_PIT_FLTD,5
+ATC_RAT_PIT_FLTT,5
+# Rate-loop gains per the ArduPilot large-vehicle tuning methodology
+# (target and D-term filters at half gyro bandwidth). Final gains are
+# established in the flight-test campaign - see appendix.
+
+
+# ---------------------------------------------------------------------
+#  11. MISSION SPEEDS AND RECOVERY PROFILES
+# ---------------------------------------------------------------------
+WPNAV_SPEED,700
+WPNAV_SPEED_UP,250
+WPNAV_SPEED_DN,150
+WPNAV_ACCEL,150
+LOIT_SPEED,800
+# 7 m/s spray-run cruise - the agronomic optimum for droplet
+# deposition at this swath width.
+RTL_ALT,1500
+RTL_SPEED,500
+RTL_ALT_FINAL,0
+LAND_SPEED,40
+PILOT_SPEED_DN,150
+# Recovery: climb to 15 m, return at 5 m/s, final descent at a
+# gentle 0.4 m/s to protect airframe and payload.
+
+
+# ---------------------------------------------------------------------
+#  12. FAILSAFE AND GEOFENCE ENVELOPE
+# ---------------------------------------------------------------------
+FS_THR_ENABLE,1
+FS_THR_VALUE,975
+# RC link loss -> Return to Launch.
+FS_GCS_ENABLE,1
+# Ground-station link loss -> Return to Launch.
+FS_EKF_ACTION,1
+FS_CRASH_CHECK,1
+ARMING_CHECK,1
+# Full pre-arm inspection suite, no checks masked: GNSS, compass,
+# IMU, battery, RC and parameter integrity all verified before the
+# aircraft will accept an arming command.
+FENCE_ENABLE,1
+FENCE_TYPE,3
+FENCE_ALT_MAX,30
+FENCE_RADIUS,1000
+FENCE_ACTION,1
+# Hard operating envelope: 30 m ceiling, 1 km radius. Breach
+# triggers automatic Return to Launch.
+
+
+# ---------------------------------------------------------------------
+#  13. TELEMETRY AND GROUND DATA GATEWAY
+# ---------------------------------------------------------------------
+SERIAL2_PROTOCOL,2
+SERIAL2_BAUD,57
+SR2_POSITION,5
+SR2_EXTRA1,10
+SR2_EXTRA2,2
+SR2_EXTRA3,2
+# MAVLink 2 downlink to the Nomad Aerospace ground station and IoT
+# gateway: attitude at 10 Hz, RTK position at 5 Hz, plus system
+# health streams, feeding live fleet monitoring and as-applied
+# spray-coverage mapping.
+
+
+# =====================================================================
+#  APPENDIX - FLIGHT-TEST COMMISSIONING SEQUENCE (per airframe)
+# ---------------------------------------------------------------------
+#  Values in this file are the engineering baseline. Four quantities
+#  are physically measured on each production airframe during
+#  commissioning, as required by the ArduPilot methodology:
+#    1. Sensor calibration      - accelerometer, compass, RC ranges
+#    2. Power calibration       - BATT_VOLT_MULT / BATT_AMP_PERVLT
+#                                 against a reference power analyser
+#    3. Hover characterisation  - learned MOT_THST_HOVER copied into
+#                                 INS_HNTCH_REF; notch frequency
+#                                 verified by in-flight FFT logging
+#    4. Rate-loop tuning        - manual large-vehicle tune, empty
+#                                 tank first, then 25/50/100% payload
+#  First flights: empty tank, staged payload progression.
+# =====================================================================
+#  END OF FILE - NOMAD AEROSPACE NOMAD K30 REV B
+# =====================================================================
