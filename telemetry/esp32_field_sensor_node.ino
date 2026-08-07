@@ -1,82 +1,178 @@
 /**
- * Nomad Aerospace — Advanced Field Telemetry Sensor Node (Gen 2)
- * Architecture: ESP32-C3 (RISC-V Ultra-Low Power SoC)
- * Sensor Payload: Sensirion SHT4x (I2C Industrial Temp/Humidity)
- * Power System: 18650 Li-Ion Portable Shield / External 5V Bank
- * 
- * Agronomic Feature: Utilizes Sensirion onboard micro-heater to evaporate 
- * morning dew/condensation, ensuring pinpoint VRA (Variable Rate Application) accuracy.
- * Author: Nomad Aerospace Systems Team
+ * Nomad Aerospace - Field Telemetry Sensor Node (Gen 2, Rev B)
+ * ------------------------------------------------------------
+ * MCU     : ESP32-C3 (RISC-V, single core) - see SPECS.md
+ * Sensor  : Sensirion SHT4x (I2C temp/RH, on-die micro-heater)
+ * Radio   : ESP-NOW point-to-point uplink to the Nomad ground gateway
+ *           (LoRaWAN is the long-range upgrade path on the roadmap)
+ * Power   : 18650 Li-Ion, deep-sleep duty cycle, ADC battery monitor
+ *
+ * Condensation handling (done correctly):
+ *   The micro-heater is NOT fired before every reading - that warms the
+ *   sensor die and biases temperature upward. Instead:
+ *     1. Take a normal (heater-off) reading.
+ *     2. If RH >= DEW_RH_THRESHOLD, condensation is likely: pulse the
+ *        heater once, wait HEATER_SETTLE_MS for the die to cool,
+ *        then re-read.
+ *     3. Report the final reading plus a flag noting the heater cycle.
  */
 
 #include <Wire.h>
 #include <WiFi.h>
+#include <esp_now.h>
+#include <esp_sleep.h>
 #include "Adafruit_SHT4x.h"
 
-// System Configuration
-#define SLEEP_DURATION_SEC 300  // 5-minute duty cycle for extreme battery life
-#define I2C_SDA 8
-#define I2C_SCL 9
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+#define NODE_ID              "NOMAD-FIELD-C3-01"
+#define SLEEP_DURATION_SEC   300          // 5-minute duty cycle
+#define I2C_SDA              8
+#define I2C_SCL              9
 
-// Initialize Sensirion High-Precision I2C Sensor
-Adafruit_SHT4x sht4 = Adafruit_SHT4x();
+#define BATT_ADC_PIN         3            // ADC1 pin via divider
+#define BATT_DIVIDER_RATIO   2.0f         // 2x 100k divider: Vbat = Vadc * 2
 
+#define DEW_RH_THRESHOLD     95.0f        // %RH above which we suspect dew
+#define HEATER_SETTLE_MS     5000         // die cool-down after heater pulse
+
+// Ground gateway ESP-NOW MAC address - set to your receiver's STA MAC.
+static uint8_t GATEWAY_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; // broadcast until paired
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+Adafruit_SHT4x sht4;
+RTC_DATA_ATTR uint32_t bootCount = 0;     // survives deep sleep - real sequence number
+volatile bool sendComplete = false;
+
+// ---------------------------------------------------------------------------
+// Setup / main flow (loop() unused: deep-sleep architecture)
+// ---------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-  delay(100);
-  
-  Serial.println("\n[NOMAD AEROSPACE] Booting Gen-2 RISC-V Telemetry Node...");
+  delay(50);
+  bootCount++;
+  Serial.printf("\n[NOMAD] Field node boot #%lu\n", (unsigned long)bootCount);
 
-  // Initialize I2C Bus for ESP32-C3
   Wire.begin(I2C_SDA, I2C_SCL);
 
   if (!sht4.begin(&Wire)) {
-    Serial.println("[CRITICAL ERROR] Sensirion SHT4x silicon not detected on I2C bus.");
-    gotoSleep();
+    Serial.println("[NOMAD] ERROR: SHT4x not found on I2C bus");
+    transmitFault("SENSOR_MISSING");
+    goToSleep();
   }
-
-  // Configure Aerospace/Industrial Grade Precision
   sht4.setPrecision(SHT4X_HIGH_PRECISION);
-  
-  // Agronomic Logic: If operating in morning dew conditions, fire the micro-heater
-  // to evaporate water droplets from the silicon before reading data.
-  sht4.setHeater(SHT4X_LOW_HEATER_100MS); 
-  Serial.println("[NOMAD AEROSPACE] Sensirion Micro-Heater cycled to clear condensation.");
 
-  // Measure & Dispatch
-  readAndDispatchTelemetry();
-  
-  gotoSleep();
+  float tempC, rh;
+  bool heaterCycled = readEnvironment(tempC, rh);
+  float battV = readBatteryVolts();
+
+  transmitTelemetry(tempC, rh, battV, heaterCycled);
+  goToSleep();
 }
 
-void loop() {
-  // Firmware architecture utilizes Deep Sleep; Loop is intentionally bypassed.
-}
+void loop() { /* unused - node deep-sleeps after each cycle */ }
 
-void readAndDispatchTelemetry() {
+// ---------------------------------------------------------------------------
+// Sensing
+// ---------------------------------------------------------------------------
+bool readEnvironment(float &tempC, float &rh) {
   sensors_event_t humidity, temp;
-  
-  // Poll the I2C bus for environmental data
+
+  // 1) Normal heater-off reading
+  sht4.setHeater(SHT4X_NO_HEATER);
   sht4.getEvent(&humidity, &temp);
-  
-  Serial.print("Field Temperature: "); Serial.print(temp.temperature); Serial.println(" C");
-  Serial.print("Field Humidity: "); Serial.print(humidity.relative_humidity); Serial.println(" %");
-  
-  // Construct JSON Payload for Nomad Ground Gateway
-  String payload = "{";
-  payload += "\"system_id\":\"NOMAD-FIELD-C3-01\",";
-  payload += "\"timestamp_ms\":" + String(millis()) + ",";
-  payload += "\"temperature\":" + String(temp.temperature, 2) + ",";
-  payload += "\"humidity\":" + String(humidity.relative_humidity, 2) + ",";
-  payload += "\"sensor_health\":\"NOMINAL\"";
-  payload += "}";
-  
-  Serial.println("Telemetry Packet Prepared: " + payload);
-  // NOTE: Insert LoRaWAN or ESP-NOW transmission protocol here
+  tempC = temp.temperature;
+  rh    = humidity.relative_humidity;
+
+  // 2) Conditional dew-clearing cycle
+  if (rh >= DEW_RH_THRESHOLD) {
+    Serial.printf("[NOMAD] RH %.1f%% >= %.0f%% - heater pulse to clear dew\n",
+                  rh, DEW_RH_THRESHOLD);
+    sht4.setHeater(SHT4X_LOW_HEATER_1S);
+    sht4.getEvent(&humidity, &temp);       // this read fires the heater pulse
+    sht4.setHeater(SHT4X_NO_HEATER);
+    delay(HEATER_SETTLE_MS);               // let the die return to ambient
+    sht4.getEvent(&humidity, &temp);       // 3) clean re-read
+    tempC = temp.temperature;
+    rh    = humidity.relative_humidity;
+    return true;
+  }
+  return false;
 }
 
-void gotoSleep() {
-  Serial.println("[NOMAD AEROSPACE] Data secured. Entering RISC-V Deep Sleep sequence...");
-  esp_sleep_enable_timer_wakeup(SLEEP_DURATION_SEC * 1000000ULL);
+float readBatteryVolts() {
+  analogReadResolution(12);
+  uint32_t mv = analogReadMilliVolts(BATT_ADC_PIN);
+  return (mv / 1000.0f) * BATT_DIVIDER_RATIO;
+}
+
+// ---------------------------------------------------------------------------
+// ESP-NOW uplink
+// ---------------------------------------------------------------------------
+void onEspNowSent(const uint8_t * /*mac*/, esp_now_send_status_t status) {
+  sendComplete = true;
+  Serial.printf("[NOMAD] ESP-NOW send: %s\n",
+                status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAILED");
+}
+
+bool espNowInit() {
+  WiFi.mode(WIFI_STA);
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("[NOMAD] ERROR: ESP-NOW init failed");
+    return false;
+  }
+  esp_now_register_send_cb(onEspNowSent);
+
+  esp_now_peer_info_t peer = {};
+  memcpy(peer.peer_addr, GATEWAY_MAC, 6);
+  peer.channel = 0;
+  peer.encrypt = false;   // link-layer encryption on roadmap (see SPECS.md)
+  if (esp_now_add_peer(&peer) != ESP_OK) {
+    Serial.println("[NOMAD] ERROR: could not add gateway peer");
+    return false;
+  }
+  return true;
+}
+
+void espNowSendJson(const String &json) {
+  if (!espNowInit()) return;
+  sendComplete = false;
+  esp_now_send(GATEWAY_MAC, (const uint8_t *)json.c_str(), json.length());
+
+  uint32_t t0 = millis();                  // used only as a local wait timer
+  while (!sendComplete && millis() - t0 < 1000) delay(10);
+}
+
+void transmitTelemetry(float tempC, float rh, float battV, bool heaterCycled) {
+  String json = "{";
+  json += "\"node\":\"" NODE_ID "\",";
+  json += "\"seq\":" + String(bootCount) + ",";
+  json += "\"temp_c\":" + String(tempC, 2) + ",";
+  json += "\"rh_pct\":" + String(rh, 2) + ",";
+  json += "\"batt_v\":" + String(battV, 2) + ",";
+  json += "\"heater_cycled\":" + String(heaterCycled ? "true" : "false");
+  json += "}";
+
+  Serial.println("[NOMAD] TX: " + json);
+  espNowSendJson(json);
+}
+
+void transmitFault(const char *fault) {
+  String json = "{\"node\":\"" NODE_ID "\",\"seq\":" + String(bootCount) +
+                ",\"fault\":\"" + fault + "\"}";
+  Serial.println("[NOMAD] TX FAULT: " + json);
+  espNowSendJson(json);
+}
+
+// ---------------------------------------------------------------------------
+// Power management
+// ---------------------------------------------------------------------------
+void goToSleep() {
+  Serial.printf("[NOMAD] Deep sleep %d s\n", SLEEP_DURATION_SEC);
+  Serial.flush();
+  esp_sleep_enable_timer_wakeup((uint64_t)SLEEP_DURATION_SEC * 1000000ULL);
   esp_deep_sleep_start();
 }
