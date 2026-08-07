@@ -56,7 +56,7 @@ commands the aircraft.
 |---|---|
 | Telemetry downlink | MAVLink 2 over long-range radio, SERIAL2 @ 57,600 |
 | Ground gateway | Python 3.9+ / pymavlink, alerting + NDJSON data feed |
-| Field edge node MCU | **ESP32-C3** (RISC-V, single core) |
+| Field edge node MCU | **ESP32-C6** (RISC-V, Wi-Fi 6 / BLE 5 / 802.15.4) |
 | Field node radio | **ESP-NOW** point-to-point to ground gateway (LoRa = upgrade path) |
 | Field node sensor | Sensirion SHT4x I2C temp/RH with conditional micro-heater |
 | Node duty cycle | 5 min deep-sleep wake cycle, 18650 Li-Ion powered |
@@ -64,7 +64,7 @@ commands the aircraft.
 ## Explicitly NOT in the current design (roadmap only)
 
 - 360° radar coverage (would require 3–4 radar units)
-- Zigbee/Thread mesh (requires ESP32-C6 hardware)
+- Zigbee/Thread mesh (Hardware is C6 802.15.4 capable, mesh firmware not yet written)
 - Encrypted telemetry links
 - Dual-antenna GNSS heading
 - Multispectral survey camera missions (`/missions` removed until SITL-validated)
