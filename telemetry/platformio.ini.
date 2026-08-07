@@ -1,10 +1,17 @@
 ; Nomad Aerospace - Field Telemetry Node Build Environment
-; MCU: ESP32-C3 (RISC-V) - see SPECS.md
-; ; root (no trailing characters) or PlatformIO will not detect it.
+; MCU: ESP32-C6 (RISC-V, 802.15.4 capable) - see SPECS.md
+; NOTE: !!!this file must be named exactly "platformio.ini" in the project!!!
+; root (no trailing characters) or PlatformIO will not detect it.
+;
+; [VERIFY] ESP32-C6 requires Arduino-ESP32 core 3.x. Official PlatformIO
+; espressif32 releases have historically lagged on C6 support; if the
+; build fails on an unknown board, use a platform release that ships
+; Arduino core 3.x (or the community pioarduino fork). Check current
+; support status before committing to a build pipeline.
 
-[env:esp32-c3-devkitm-1]
+[env:esp32-c6-devkitc-1]
 platform = espressif32
-board = esp32-c3-devkitm-1
+board = esp32-c6-devkitc-1
 framework = arduino
 monitor_speed = 115200
 
