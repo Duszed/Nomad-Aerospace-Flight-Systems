@@ -12,19 +12,18 @@
 #  GNSS          : CubePilot Here4 RTK, DroneCAN (CAN1)
 #  Radar         : Nanoradar MR72 77 GHz obstacle radar (CAN2)
 #  Altimeter     : Benewake TF03 LiDAR, 100 m (SERIAL4)
-#  FPV camera    : Forward-facing, ~120 deg FOV (video via Skydroid link)
-#  Ground control: Skydroid H12 (RC + telemetry + video), R12 air unit
+#  FPV camera    : SIYI A2 mini gimbal, 160 deg FOV (Ethernet to air unit)
+#  Ground control: SIYI MK15 Agriculture (RC + telemetry + 1080p video)
 #  Spray system  : Brushless pump + centrifugal atomiser discs
-#  Survey camera : MAPIR Survey3 NDVI, PWM shutter trigger
 #  Telemetry     : MAVLink 2 long-range link to ground gateway
 # ---------------------------------------------------------------------
 #  BUS ARCHITECTURE
 #    CAN1  DroneCAN     -> Here4 RTK GNSS / compass
 #    CAN2  RadarCAN     -> MR72 obstacle radar (dedicated bus)
 #    ESC telemetry      -> Hobbywing DataLink (independent of FC)
-#    RCIN / SBUS        -> Skydroid R12 receiver (control)
-#    SERIAL2            -> MAVLink 2 telemetry (via R12 air unit)
-#    FPV video          -> camera to R12 air unit (NOT via flight controller)
+#    RCIN / SBUS        -> SIYI MK15 air unit (control)
+#    SERIAL2            -> MAVLink 2 telemetry (via MK15 air unit UART)
+#    FPV video          -> A2 mini camera to air unit ETHERNET (NOT via FC)
 #    SERIAL4            -> TF03 LiDAR altimeter
 # =====================================================================
 
@@ -175,21 +174,7 @@ RC7_OPTION,15
 
 
 # ---------------------------------------------------------------------
-#  9. NDVI SURVEY PAYLOAD - MAPIR SURVEY3
-# ---------------------------------------------------------------------
-CAM1_TYPE,1
-SERVO11_FUNCTION,10
-CAM1_SERVO_ON_PWM,1900
-CAM1_SERVO_OFF_PWM,1100
-CAM1_DURATION,0.1
-CAM1_INTRVL_MIN,2
-# PWM shutter trigger on AUX 3, minimum 2 s between multispectral
-# captures. Survey missions command distance-based triggering via
-# DO_SET_CAM_TRIGG_DIST for uniform NDVI ground coverage.
-
-
-# ---------------------------------------------------------------------
-#  10. VIBRATION MANAGEMENT AND ATTITUDE CONTROL (43x14 in ROTORS)
+#  9. VIBRATION MANAGEMENT AND ATTITUDE CONTROL (43x14 in ROTORS)
 # ---------------------------------------------------------------------
 INS_GYRO_FILTER,10
 INS_ACCEL_FILTER,10
@@ -197,15 +182,19 @@ INS_ACCEL_FILTER,10
 # structural and rotor frequencies of a 30 L-class airframe.
 INS_HNTCH_ENABLE,1
 INS_HNTCH_MODE,1
-INS_HNTCH_FREQ,22
-INS_HNTCH_BW,11
+INS_HNTCH_FREQ,36
+INS_HNTCH_BW,18
 INS_HNTCH_REF,0.25
 INS_HNTCH_HMNCS,3
-# Throttle-tracking harmonic notch centred on the ~1300-1500 rpm hover
-# band of the 43x14 in propellers (~22 Hz fundamental) plus second
-# harmonic: rotor vibration is removed from the control path instead
-# of leaking into the motors as heat and oscillation. Exact centre
-# frequency is confirmed by in-flight FFT during commissioning.
+# Throttle-tracking harmonic notch centred on the motor ROTATION
+# frequency at the design hover point. Read from the Hobbywing 54 V
+# dynamometer curve: at 15 kg/rotor the X11 G2 turns ~2,150 rpm, i.e.
+# ~36 Hz fundamental. HMNCS,3 adds the second harmonic, which covers
+# the two-blade blade-pass tone at ~72 Hz.
+# BW set to FREQ/2 per ArduPilot large-vehicle tuning guidance.
+# [CAL] Confirm the centre frequency with an in-flight FFT (batch
+# sampling via LOG_BITMASK) during commissioning and retune if the
+# measured hover rpm differs from the datasheet curve.
 ATC_ACCEL_R_MAX,30000
 ATC_ACCEL_P_MAX,30000
 ATC_ACCEL_Y_MAX,9000
@@ -229,7 +218,7 @@ ATC_RAT_PIT_FLTT,5
 
 
 # ---------------------------------------------------------------------
-#  11. MISSION SPEEDS AND RECOVERY PROFILES
+#  10. MISSION SPEEDS AND RECOVERY PROFILES
 # ---------------------------------------------------------------------
 WPNAV_SPEED,700
 WPNAV_SPEED_UP,250
@@ -248,7 +237,7 @@ PILOT_SPEED_DN,150
 
 
 # ---------------------------------------------------------------------
-#  12. FAILSAFE AND GEOFENCE ENVELOPE
+#  11. FAILSAFE AND GEOFENCE ENVELOPE
 # ---------------------------------------------------------------------
 FS_THR_ENABLE,1
 FS_THR_VALUE,975
@@ -271,30 +260,45 @@ FENCE_ACTION,1
 
 
 # ---------------------------------------------------------------------
-#  13. CONTROL LINK AND FPV VIDEO
+#  12. CONTROL LINK AND FPV VIDEO
 # ---------------------------------------------------------------------
-# Skydroid H12 ground controller with R12 air unit provides RC control,
-# MAVLink telemetry and FPV video over a single 2.4 GHz link.
+# SIYI MK15 Agriculture handheld ground station provides RC control,
+# MAVLink telemetry and 1080p FPV video over a single link. Chosen for
+# cost and because SIYI documents both Pixhawk/ArduPilot compatibility
+# and the MK15 <-> A2 mini gimbal pairing directly.
 #
-# CONTROL: R12 outputs SBUS to the Cube's dedicated RCIN port. No serial
-# protocol parameter is required for SBUS on RCIN.
+# CONTROL: the MK15 air unit outputs S.Bus to the Cube's dedicated RCIN
+# port. No serial protocol parameter is required for S.Bus on RCIN.
 #
-# FPV VIDEO: the camera connects directly to the R12 air unit. Video does
-# NOT pass through the flight controller, draws no FC resources, and
-# requires NO ArduPilot parameters. It is an independent path - a video
-# link failure cannot affect flight control.
+# TELEMETRY: MAVLink over the air unit's telemetry UART into SERIAL2
+# (see section 13). No separate 915/868 MHz radio is fitted.
 #
-# The camera is powered from its own BEC, not from a flight controller
-# rail. [CAL] Confirm camera input voltage against the R12 wiring
-# diagram before connecting.
+# FPV VIDEO: the SIYI A2 mini connects to the air unit's ETHERNET port -
+# Ethernet is the camera's only video output. Video does NOT pass
+# through the flight controller, draws no FC resources, and requires NO
+# ArduPilot parameters. It is an independent path: a video or camera
+# failure cannot affect flight control.
 #
-# [VERIFY] If a second camera is fitted, the H12 supports switching
-# between two video feeds. Feed selection is handled on the H12 itself,
-# not by the flight controller.
+# GIMBAL: the A2 mini is a single-axis tilt gimbal (-90 to +25 deg).
+# Tilt is commanded from MK15 dials/switches through the air unit via
+# PWM (already carried on the Ethernet connection) or optional S.Bus.
+# Gimbal control does NOT consume a flight-controller servo output and
+# needs no MNT_* parameters in this configuration.
+#
+# POWER: the A2 mini requires a dedicated 12 V supply (approx. 2 W
+# average, 12 W peak) - NOT a flight-controller rail.
+# [CAL] Fit a 12 V BEC sized with margin for the 12 W peak, and confirm
+# the air unit's telemetry UART pinout against the Cube TELEM port
+# before first power-on.
+#
+# [VERIFY] SIYI's A2 mini manual recommends the MK15 ENTERPRISE combo
+# for gimbal-camera compatibility; the AGRICULTURE combo ships with its
+# own fixed IP67 camera. Confirm the Agriculture air unit exposes the
+# Ethernet port the A2 mini needs before ordering.
 
 
 # ---------------------------------------------------------------------
-#  14. TELEMETRY AND GROUND DATA GATEWAY
+#  13. TELEMETRY AND GROUND DATA GATEWAY
 # ---------------------------------------------------------------------
 SERIAL2_PROTOCOL,2
 SERIAL2_BAUD,57
@@ -302,10 +306,11 @@ SR2_POSITION,5
 SR2_EXTRA1,10
 SR2_EXTRA2,2
 SR2_EXTRA3,2
-# MAVLink 2 downlink to the Nomad Aerospace ground station and IoT
-# gateway: attitude at 10 Hz, RTK position at 5 Hz, plus system
-# health streams, feeding live fleet monitoring and as-applied
-# spray-coverage mapping.
+# MAVLink 2 downlink runs over the SIYI MK15 air unit's telemetry UART,
+# NOT a separate 915/868 MHz radio - the MK15 carries control,
+# telemetry and video on a single link. Streams: attitude at 10 Hz,
+# RTK position at 5 Hz, plus system health, feeding live fleet
+# monitoring and as-applied spray-coverage mapping.
 
 
 # =====================================================================
