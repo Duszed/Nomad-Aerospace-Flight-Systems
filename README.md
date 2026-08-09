@@ -25,8 +25,8 @@ built on an open ArduPilot avionics core with locally assembled hardware.
 * **Navigation:** CubePilot Here4 RTK GNSS (DroneCAN, centimetre-class)
 * **Terrain Altimetry:** Benewake TF03 long-range LiDAR (UART) — canopy-relative height hold
 * **Obstacle Detection:** Nanoradar MR72 77 GHz forward-sector radar (dedicated CAN bus)
-* **Situational Awareness:** Forward-facing FPV camera (~120° FOV) — live video to the operator
-* **Control & Video Link:** Skydroid H12 — combined RC, telemetry and video on one 2.4 GHz link
+* **Situational Awareness:** SIYI A2 mini FPV gimbal camera — 160° FOV, single-axis tilt, 1080p starlight sensor
+* **Control & Video Link:** SIYI MK15 Agriculture — RC, MAVLink telemetry and 1080p FPV video on one link, 180 ms latency, Pixhawk/ArduPilot + QGroundControl compatible
 * **Field Edge Nodes:** ESP32-C6 (RISC-V, 802.15.4-capable) + Sensirion SHT4x, ESP-NOW uplink
 
 ---
@@ -35,9 +35,10 @@ built on an open ArduPilot avionics core with locally assembled hardware.
 
 ```mermaid
 graph TD
-    A[Cube Orange+ Flight Controller] -->|MAVLink 2 via R12 air unit| B[Nomad Ground Gateway]
-    H[FPV Camera] -->|direct video, bypasses FC| I[Skydroid H12 Controller]
-    A -->|SBUS control| I
+    A[Cube Orange+ Flight Controller] -->|MAVLink 2 via MK15 air unit| B[Nomad Ground Gateway]
+    H[SIYI A2 mini Camera] -->|Ethernet video, bypasses FC| J[MK15 Air Unit]
+    J -->|single link| I[SIYI MK15 Controller]
+    A -->|S.Bus control| J
     C[Benewake TF03 LiDAR] -->|UART SERIAL4| A
     D[Nanoradar MR72 77GHz] -->|RadarCAN CAN2| A
     G[Here4 RTK GNSS] -->|DroneCAN CAN1| A
@@ -97,10 +98,11 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 * **Geofence:** 30 m ceiling, 1 km radius hard envelope, breach → RTL.
 * **Obstacle response:** forward radar STOPS the aircraft 3 m before an
   obstacle — the correct behaviour among poles, trees, and power lines.
-* **Operator visibility:** a forward FPV camera gives the pilot live video
-  for field-edge positioning and obstacle identification. The video path is
-  independent of the flight controller, so a video failure cannot affect
-  flight control.
+* **Operator visibility:** a forward FPV gimbal camera gives the pilot live
+  1080p video with operator-controlled tilt, for field-edge positioning and
+  obstacle identification. The camera connects to the air unit over Ethernet,
+  so the video path is fully independent of the flight controller — a camera
+  or video failure cannot affect flight control.
 * **Authority model:** all failsafe execution lives in the flight
   controller. Ground software observes and alerts; it never commands.
 
@@ -138,6 +140,7 @@ written.
 * Zigbee/Thread mesh firmware (hardware already capable)
 * LoRaWAN long-range option for extended-range deployments
 * Encrypted telemetry transport
+* NDVI / multispectral survey camera payload
 * SITL-validated autonomous mission library (`/missions`)
 
 ## 📄 License
