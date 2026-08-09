@@ -62,20 +62,10 @@ commands the aircraft.
 | Ground software | QGroundControl / SIYI QGC / SIYI FPV app — RTSP video stream |
 | Control link | 180 ms latency; ~3.5 km at 3 m agricultural flight height (15 km line-of-sight rating) |
 
-**Confirmed:** there is **no separate 915/868 MHz telemetry radio.** The MK15
+There is **no separate 915/868 MHz telemetry radio.** The MK15
 pair carries control, telemetry and FPV video on one link. `SERIAL2` in
 `/config` connects to the MK15 air unit's telemetry UART.
 
-Chosen over CubePilot Herelink on cost (MK15 Agriculture ≈ $448) and
-because SIYI documents the MK15 ↔ A2 mini pairing directly, alongside
-Pixhawk/ArduPilot and QGroundControl support.
-
-> **[VERIFY] Before ordering:** SIYI's A2 mini manual recommends the
-> **MK15 Enterprise** combo for gimbal-camera compatibility, and the
-> Agriculture combo already ships with its own fixed IP67 camera.
-> Confirm with SIYI or the dealer that the **Agriculture air unit has the
-> Ethernet port** the A2 mini requires — if it does not, either use the
-> included camera or switch to the Enterprise combo.
 
 ## Ground & Field Segment
 
