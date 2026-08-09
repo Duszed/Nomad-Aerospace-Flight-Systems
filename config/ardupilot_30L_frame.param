@@ -12,6 +12,8 @@
 #  GNSS          : CubePilot Here4 RTK, DroneCAN (CAN1)
 #  Radar         : Nanoradar MR72 77 GHz obstacle radar (CAN2)
 #  Altimeter     : Benewake TF03 LiDAR, 100 m (SERIAL4)
+#  FPV camera    : Forward-facing, ~120 deg FOV (video via Skydroid link)
+#  Ground control: Skydroid H12 (RC + telemetry + video), R12 air unit
 #  Spray system  : Brushless pump + centrifugal atomiser discs
 #  Survey camera : MAPIR Survey3 NDVI, PWM shutter trigger
 #  Telemetry     : MAVLink 2 long-range link to ground gateway
@@ -20,7 +22,9 @@
 #    CAN1  DroneCAN     -> Here4 RTK GNSS / compass
 #    CAN2  RadarCAN     -> MR72 obstacle radar (dedicated bus)
 #    ESC telemetry      -> Hobbywing DataLink (independent of FC)
-#    SERIAL2            -> MAVLink 2 telemetry downlink
+#    RCIN / SBUS        -> Skydroid R12 receiver (control)
+#    SERIAL2            -> MAVLink 2 telemetry (via R12 air unit)
+#    FPV video          -> camera to R12 air unit (NOT via flight controller)
 #    SERIAL4            -> TF03 LiDAR altimeter
 # =====================================================================
 
@@ -267,7 +271,30 @@ FENCE_ACTION,1
 
 
 # ---------------------------------------------------------------------
-#  13. TELEMETRY AND GROUND DATA GATEWAY
+#  13. CONTROL LINK AND FPV VIDEO
+# ---------------------------------------------------------------------
+# Skydroid H12 ground controller with R12 air unit provides RC control,
+# MAVLink telemetry and FPV video over a single 2.4 GHz link.
+#
+# CONTROL: R12 outputs SBUS to the Cube's dedicated RCIN port. No serial
+# protocol parameter is required for SBUS on RCIN.
+#
+# FPV VIDEO: the camera connects directly to the R12 air unit. Video does
+# NOT pass through the flight controller, draws no FC resources, and
+# requires NO ArduPilot parameters. It is an independent path - a video
+# link failure cannot affect flight control.
+#
+# The camera is powered from its own BEC, not from a flight controller
+# rail. [CAL] Confirm camera input voltage against the R12 wiring
+# diagram before connecting.
+#
+# [VERIFY] If a second camera is fitted, the H12 supports switching
+# between two video feeds. Feed selection is handled on the H12 itself,
+# not by the flight controller.
+
+
+# ---------------------------------------------------------------------
+#  14. TELEMETRY AND GROUND DATA GATEWAY
 # ---------------------------------------------------------------------
 SERIAL2_PROTOCOL,2
 SERIAL2_BAUD,57
