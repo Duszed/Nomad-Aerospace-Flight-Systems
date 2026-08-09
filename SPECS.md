@@ -3,6 +3,7 @@
 > **This file is the single source of truth.** Every other document, comment,
 > diagram, and code constant in this repository defers to the values below.
 > If any file disagrees with SPECS.md, that file is wrong.
+> no SIM/cellular connectivity used; all field data routes through the Nomad ground gateway
 
 ## Aircraft
 
@@ -65,6 +66,26 @@ commands the aircraft.
 There is **no separate 915/868 MHz telemetry radio.** The MK15
 pair carries control, telemetry and FPV video on one link. `SERIAL2` in
 `/config` connects to the MK15 air unit's telemetry UART.
+
+## Field Operations
+
+> How the aircraft knows where it is, where the field boundary is, and
+> where to spray — entirely offline. No cellular or internet connection
+> is required for any step below.
+
+| Step | How it works | Connectivity |
+|---|---|---|
+| Position | Here4 RTK fuses GPS/GLONASS/Galileo with correction data from a local RTK base station over a direct radio link | Local radio only — no internet |
+| Field boundary | Walked or flown once per field in Loiter/manual mode; saved as a polygon in the GCS (QGroundControl / Mission Planner) | One-time capture, stored locally on the ground station |
+| Base map (optional) | Satellite imagery pre-downloaded and cached on the ground station tablet when internet is available | Cached locally; not required at flight time |
+| Spray route | GCS Survey/Grid tool generates the full pass pattern from the saved boundary, swath width, altitude and overlap | Computed on-device, offline |
+| Mission upload | Generated route uploaded to the Cube over the SIYI MK15 link | Local link only |
+| Application rate | `/config` ties pump flow to real-time ground speed (`SPRAY_PUMP_RATE`, `SPRAY_SPEED_MIN`) — not derived from any map or cloud data | Onboard flight-controller logic |
+
+**No SIM or cellular connectivity is used.** The MK15's SIM slot is left
+unpopulated; all field data (coverage maps, spray records, telemetry)
+routes only through the Nomad ground gateway  never through a SIYI
+cloud account or third-party service.
 
 
 ## Ground & Field Segment
