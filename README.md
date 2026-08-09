@@ -23,10 +23,10 @@ built on an open ArduPilot avionics core with locally assembled hardware.
 * **Flight Controller:** Hex Cube Orange+ (triple IMU, vibration isolated) · ArduCopter 4.5.x
 * **Propulsion:** 4× Hobbywing X11 G2 FOC integrated powertrains, 14S, 43×14 in props
 * **Navigation:** CubePilot Here4 RTK GNSS (DroneCAN, centimetre-class)
-* **Terrain Altimetry:** Benewake TF03 long-range LiDAR (UART) — canopy-relative height hold
+* **Terrain Altimetry:** Benewake TF03 long range LiDAR (UART)  canopy-relative height hold
 * **Obstacle Detection:** Nanoradar MR72 77 GHz forward-sector radar (dedicated CAN bus)
-* **Situational Awareness:** SIYI A2 mini FPV gimbal camera — 160° FOV, single-axis tilt, 1080p starlight sensor
-* **Control & Video Link:** SIYI MK15 Agriculture — RC, MAVLink telemetry and 1080p FPV video on one link, 180 ms latency, Pixhawk/ArduPilot + QGroundControl compatible
+* **Situational Awareness:** SIYI A2 mini FPV gimbal camera  160° FOV, single axis tilt, 1080p starlight sensor
+* **Control & Video Link:** SIYI MK15 Agriculture  RC, MAVLink telemetry and 1080p FPV video on one link, 180 ms latency, Pixhawk/ArduPilot + QGroundControl compatible
 * **Field Edge Nodes:** ESP32-C6 (RISC-V, 802.15.4-capable) + Sensirion SHT4x, ESP-NOW uplink
 
 ---
