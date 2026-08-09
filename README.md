@@ -59,11 +59,11 @@ Motor-to-motor diagonal span: 1781 mm | Operational footprint: 1.3 × 1.3 m
 
 Hobbywing X11 G2 (14S) paired with 43×14 folding carbon propellers.
 
-**Design hover point** — at 60 kg all-up weight (15 kg per axis), the
+**Design hover point**  at 60 kg all-up weight (15 kg per axis), the
 manufacturer thrust curve indicates roughly **1.9 kW and ~36 A per axis at
 54 V nominal (~7.8 g/W)**, with substantial peak-thrust margin remaining
 for gust response and maneuvering. These figures are the design baseline
-from the datasheet curve below; per-airframe dynamometer validation is
+from the datasheet curve below; per airframe dynamometer validation is
 part of the commissioning process.
 
 ![Thrust curve](assets/thrust_graph_54v.png)
@@ -91,17 +91,17 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 ## 🛠 Flight Safety Architecture
 
 * **Battery failsafe ladder (14S):** arming refused below 3.6 V/cell; LOW
-  (3.4 V/cell) triggers Return-to-Launch; CRITICAL (3.3 V/cell) triggers
+  (3.4 V/cell) triggers Return to Launch; CRITICAL (3.3 V/cell) triggers
   immediate controlled landing. Voltage is sag-compensated so full-tank
   spray-run current cannot cause false aborts.
 * **Link-loss failsafes:** RC loss and ground-station loss both → RTL.
 * **Geofence:** 30 m ceiling, 1 km radius hard envelope, breach → RTL.
 * **Obstacle response:** forward radar STOPS the aircraft 3 m before an
-  obstacle — the correct behaviour among poles, trees, and power lines.
+  obstacle  the correct behaviour among poles, trees, and power lines.
 * **Operator visibility:** a forward FPV gimbal camera gives the pilot live
   1080p video with operator-controlled tilt, for field-edge positioning and
   obstacle identification. The camera connects to the air unit over Ethernet,
-  so the video path is fully independent of the flight controller — a camera
+  so the video path is fully independent of the flight controller, a camera
   or video failure cannot affect flight control.
 * **Authority model:** all failsafe execution lives in the flight
   controller. Ground software observes and alerts; it never commands.
@@ -120,7 +120,7 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 
 Low-power **ESP32-C6 (RISC-V)** nodes with **Sensirion SHT4x** sensors.
 A conditional micro-heater routine detects condensation (RH ≥ 95%),
-pulses the sensor heater, waits for thermal settling, and re-samples —
+pulses the sensor heater, waits for thermal settling, and re-samples
 preserving reading accuracy in morning dew conditions instead of
 biasing it.
 
@@ -138,7 +138,7 @@ written.
 
 * 360° radar coverage (multi-unit ring)
 * Zigbee/Thread mesh firmware (hardware already capable)
-* LoRaWAN long-range option for extended-range deployments
+* LoRaWAN long range option for extended range deployments
 * Encrypted telemetry transport
 * NDVI / multispectral survey camera payload
 * SITL-validated autonomous mission library (`/missions`)
