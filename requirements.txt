@@ -1,2 +1,0 @@
-# Nomad Aerospace - ground gateway dependencies
-pymavlink>=2.4.40
