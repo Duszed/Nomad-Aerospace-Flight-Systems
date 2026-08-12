@@ -1,0 +1,5 @@
+# Nomad Aerospace - ground gateway dependencies
+pymavlink>=2.4.40
+
+# dev/test only (not required to run the gateway itself)
+pytest>=8.0.0
