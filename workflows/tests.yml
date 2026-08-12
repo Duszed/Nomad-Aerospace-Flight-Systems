@@ -1,1 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r telemetry/requirements.txt
+
+      - name: Run test suite
+        working-directory: telemetry
+        run: pytest -v
+
+      - name: Verify spray planner runs end to end
+        working-directory: telemetry
+        run: |
+          python spray_planner.py --area 12 --width 300
+          python spray_planner.py --area 12 --width 300 --export /tmp/mission.waypoints
+          head -1 /tmp/mission.waypoints | grep -q "QGC WPL 110"
+          echo "Waypoint export verified."
 
