@@ -3,7 +3,6 @@
 > **This file is the single source of truth.** Every other document, comment,
 > diagram, and code constant in this repository defers to the values below.
 > If any file disagrees with SPECS.md, that file is wrong.
-> no SIM/cellular connectivity used; all field data routes through the Nomad ground gateway
 
 ## Aircraft
 
@@ -52,6 +51,18 @@ commands the aircraft.
 | Avoidance behaviour | STOP 3 m before obstacle (no slide) |
 | Situational awareness | **SIYI A2 mini** FPV gimbal camera — 160° horizontal FOV, single-axis tilt (−90°…+25°), 1/2.7" starlight sensor, 1080p. Independent of the flight controller; requires no ArduPilot parameters |
 
+## Spray System
+
+| Item | Specification |
+|---|---|
+| Pump | **Hobbywing PUMP 30L** (HW 30L Flexible Impeller Pump) |
+| Rated flow | 20 L/min (30 L/min max) |
+| Recommended battery | 12–18S LiPo — covers the K30's 14S pack |
+| Nozzle | Centrifugal atomiser, efficient droplet atomisation |
+| Required flow at cruise | ~4.4 L/min (15 L/ha × 7 m swath × 7 m/s cruise) |
+| Design margin | ~4.5× at rated flow — comfortable headroom for back-pressure, tubing losses and future rate increases |
+| Control | `SERVO9_FUNCTION,22` (pump) / `SERVO10_FUNCTION,23` (spinner), flow slaved to ground speed via `SPRAY_PUMP_RATE` / `SPRAY_SPEED_MIN` — see `/config` |
+
 ## Control & Video Link
 
 | Item | Specification |
@@ -63,9 +74,13 @@ commands the aircraft.
 | Ground software | QGroundControl / SIYI QGC / SIYI FPV app — RTSP video stream |
 | Control link | 180 ms latency; ~3.5 km at 3 m agricultural flight height (15 km line-of-sight rating) |
 
-There is **no separate 915/868 MHz telemetry radio.** The MK15
+**Confirmed:** there is **no separate 915/868 MHz telemetry radio.** The MK15
 pair carries control, telemetry and FPV video on one link. `SERIAL2` in
 `/config` connects to the MK15 air unit's telemetry UART.
+
+Chosen over CubePilot Herelink on cost (MK15 Agriculture ≈ $448) and
+because SIYI documents the MK15 ↔ A2 mini pairing directly, alongside
+Pixhawk/ArduPilot and QGroundControl support.
 
 ## Field Operations
 
@@ -84,9 +99,8 @@ pair carries control, telemetry and FPV video on one link. `SERIAL2` in
 
 **No SIM or cellular connectivity is used.** The MK15's SIM slot is left
 unpopulated; all field data (coverage maps, spray records, telemetry)
-routes only through the Nomad ground gateway  never through a SIYI
+routes only through the Nomad ground gateway — never through a SIYI
 cloud account or third-party service.
-
 
 ## Ground & Field Segment
 
