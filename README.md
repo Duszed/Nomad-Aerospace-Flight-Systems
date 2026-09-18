@@ -137,6 +137,9 @@ written.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Duszed/Nomad-Aerospace-Flight-Systems/blob/main/notebooks/mission_planner_demo.ipynb)
 
+<img width="600" height="324" alt="0918-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/483f208c-06ed-4a83-969a-bd8c14532bd0" />
+
+
 > Click the **Open in Colab** badge above to launch the interactive simulation engine, test return-to-home logic, and export `.waypoints` files for ArduPilot / QGroundControl.
 
 ## 🗺 Roadmap (not yet implemented)
