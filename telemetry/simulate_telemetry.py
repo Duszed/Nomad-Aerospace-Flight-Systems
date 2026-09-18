@@ -49,7 +49,7 @@ def main() -> None:
     print("[SIM] Start mavlink_ground_gateway.py in another terminal to observe it.\n")
 
     t0 = time.monotonic()
-    lat, lon = 40.8500 * 1e7, 68.6600 * 1e7  # near Syrdarya region
+    lat, lon = 40.410983 * 1e7, 68.841300 * 1e7  # Syrdarya farm parcel
     heading = 0
 
     while True:
