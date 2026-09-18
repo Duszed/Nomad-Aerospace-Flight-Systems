@@ -82,8 +82,8 @@ def plan_mission(area_ha: float,
                  swath_m: float = DEFAULT_SWATH_M,
                  rate_l_per_ha: float = DEFAULT_RATE_L_PER_HA,
                  alt_m: float = 3.0,
-                 origin_lat: float = 40.8500,
-                 origin_lon: float = 68.6600) -> MissionPlan:
+                 origin_lat: float = 40.410983,
+                 origin_lon: float = 68.841300) -> MissionPlan:
     """Plan a boustrophedon spray mission over a rectangular field.
 
     area_ha        field area in hectares
