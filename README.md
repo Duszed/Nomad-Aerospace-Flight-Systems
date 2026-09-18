@@ -133,6 +133,11 @@ written.
 ![ESP32-C6 node](assets/esp32_sensor_node.png)
 
 ---
+### Autonomous Swath Planning & Simulation
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Duszed/Nomad-Aerospace-Flight-Systems/blob/main/notebooks/mission_planner_demo.ipynb)
+
+> Click the **Open in Colab** badge above to launch the interactive simulation engine, test return-to-home logic, and export `.waypoints` files for ArduPilot / QGroundControl.
 
 ## 🗺 Roadmap (not yet implemented)
 
