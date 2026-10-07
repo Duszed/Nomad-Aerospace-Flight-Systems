@@ -20,13 +20,15 @@ built on an open ArduPilot avionics core with locally assembled hardware.
 
 ### Key Hardware & Avionics
 
+![Cube Orange+ flight controller and Here4 RTK GNSS](assets/cube_orange_stack.png)
+
 * **Flight Controller:** Hex Cube Orange+ (triple IMU, vibration isolated) · ArduCopter 4.5.x
 * **Propulsion:** 4× Hobbywing X11 G2 FOC integrated powertrains, 14S, 43×14 in props
 * **Navigation:** CubePilot Here4 RTK GNSS (DroneCAN, centimetre-class)
-* **Terrain Altimetry:** Benewake TF03 long range LiDAR (UART)  canopy-relative height hold
+* **Terrain Altimetry:** Benewake TF03 long range LiDAR (UART) — canopy-relative height hold
 * **Obstacle Detection:** Nanoradar MR72 77 GHz forward-sector radar (dedicated CAN bus)
-* **Situational Awareness:** SIYI A2 mini FPV gimbal camera  160° FOV, single axis tilt, 1080p starlight sensor
-* **Control & Video Link:** SIYI MK15 Agriculture  RC, MAVLink telemetry and 1080p FPV video on one link, 180 ms latency, Pixhawk/ArduPilot + QGroundControl compatible
+* **Situational Awareness:** SIYI A2 mini FPV gimbal camera — 160° FOV, single axis tilt, 1080p starlight sensor
+* **Control & Video Link:** SIYI MK15 Agriculture — RC, MAVLink telemetry and 1080p FPV video on one link, 180 ms latency, Pixhawk/ArduPilot + QGroundControl compatible
 * **Field Edge Nodes:** ESP32-C6 (RISC-V, 802.15.4-capable) + Sensirion SHT4x, ESP-NOW uplink
 
 ---
@@ -59,14 +61,22 @@ Motor-to-motor diagonal span: 1781 mm | Operational footprint: 1.3 × 1.3 m
 
 Hobbywing X11 G2 (14S) paired with 43×14 folding carbon propellers.
 
-**Design hover point**  at 60 kg all-up weight (15 kg per axis), the
+**Design hover point** — at 60 kg all-up weight (15 kg per axis), the
 manufacturer thrust curve indicates roughly **1.9 kW and ~36 A per axis at
 54 V nominal (~7.8 g/W)**, with substantial peak-thrust margin remaining
 for gust response and maneuvering. These figures are the design baseline
 from the datasheet curve below; per airframe dynamometer validation is
 part of the commissioning process.
 
-![Thrust curve](assets/thrust_graph_54v.png)
+![Thrust curve, 54 V](assets/thrust_graph_54v.png)
+
+![Thrust test data, 54 V](assets/thrust_table_54v.png)
+
+**48 V reference data** — the same powertrain tested at a lower bus voltage:
+
+![Thrust curve, 48 V](assets/thrust_graph_48v.png)
+
+![Thrust test data, 48 V](assets/thrust_table_48v.png)
 
 **Integrated FOC Motor Mount & ESC Architecture**
 45.1 mm carbon-tube clamp, integrated FOC ESC cooling housing, 12 AWG power routing.
@@ -97,11 +107,11 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 * **Link-loss failsafes:** RC loss and ground-station loss both → RTL.
 * **Geofence:** 30 m ceiling, 1 km radius hard envelope, breach → RTL.
 * **Obstacle response:** forward radar STOPS the aircraft 3 m before an
-  obstacle  the correct behaviour among poles, trees, and power lines.
+  obstacle — the correct behaviour among poles, trees, and power lines.
 * **Operator visibility:** a forward FPV gimbal camera gives the pilot live
   1080p video with operator-controlled tilt, for field-edge positioning and
   obstacle identification. The camera connects to the air unit over Ethernet,
-  so the video path is fully independent of the flight controller, a camera
+  so the video path is fully independent of the flight controller; a camera
   or video failure cannot affect flight control.
 * **Authority model:** all failsafe execution lives in the flight
   controller. Ground software observes and alerts; it never commands.
@@ -120,7 +130,7 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 
 Low-power **ESP32-C6 (RISC-V)** nodes with **Sensirion SHT4x** sensors.
 A conditional micro-heater routine detects condensation (RH ≥ 95%),
-pulses the sensor heater, waits for thermal settling, and re-samples
+pulses the sensor heater, waits for thermal settling, and re-samples —
 preserving reading accuracy in morning dew conditions instead of
 biasing it.
 
@@ -131,6 +141,10 @@ with no board redesign. That mesh firmware is on the roadmap, not yet
 written.
 
 ![ESP32-C6 node](assets/esp32_sensor_node.png)
+
+**ESP32-C6 dev-board pinout** (the node firmware wires the SHT4x over I²C on SDA = GPIO6, SCL = GPIO7)
+
+![ESP32-C6 pinout](assets/esp32_c6_pinout.png)
 
 ---
 ### Autonomous Swath Planning & Simulation
