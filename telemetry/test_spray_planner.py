@@ -121,12 +121,59 @@ def test_passes_alternate_direction():
     assert first_goes_north != second_goes_north
 
 
+def _rows(text):
+    return [line.split("\t") for line in text.splitlines()[1:]]
+
+
 def test_qgc_export_has_valid_header_and_row_count():
+    """Home + takeoff + (waypoint + sprayer command) per point + RTL."""
     plan = plan_mission(area_ha=5, field_width_m=70, swath_m=7)
     text = to_qgc_waypoints(plan)
     lines = text.splitlines()
     assert lines[0] == "QGC WPL 110"
-    assert len(lines) == len(plan.waypoints) + 1
+    assert len(lines) == 1 + 2 + 2 * len(plan.waypoints) + 1
+
+
+def test_mission_starts_with_home_then_takeoff_and_ends_with_rtl():
+    """Row 0 is home (overwritten on arming), so it must not be a spray point."""
+    rows = _rows(to_qgc_waypoints(plan_mission(area_ha=5, field_width_m=70, swath_m=7)))
+    assert rows[0][0] == "0" and rows[0][1] == "1"   # seq 0, current = home
+    assert rows[1][3] == "22"                        # NAV_TAKEOFF
+    assert rows[-1][3] == "20"                       # NAV_RETURN_TO_LAUNCH
+
+
+def test_spray_legs_use_terrain_frame():
+    """Frame 10 makes the LiDAR hold height above the crop, not above home."""
+    rows = _rows(to_qgc_waypoints(plan_mission(area_ha=5, field_width_m=70, swath_m=7)))
+    legs = [r for r in rows[2:-1] if r[3] == "16"]
+    assert legs and all(r[2] == "10" for r in legs)
+
+
+def test_sprayer_switches_on_and_off_once_per_pass():
+    plan = plan_mission(area_ha=5, field_width_m=70, swath_m=7)
+    rows = _rows(to_qgc_waypoints(plan))
+    sprayer = [r[4] for r in rows if r[3] == "216"]
+    assert sprayer == ["1", "0"] * plan.passes
+
+
+def test_seq_numbers_are_contiguous_in_export():
+    rows = _rows(to_qgc_waypoints(plan_mission(area_ha=5, field_width_m=70, swath_m=7)))
+    assert [int(r[0]) for r in rows] == list(range(len(rows)))
+
+
+def test_first_pass_sits_half_a_swath_inside_the_edge():
+    """Centreline at swath/2 so the outer swath covers the boundary."""
+    plan = plan_mission(area_ha=5, field_width_m=70, swath_m=7)
+    m_per_deg_lon = 111_320.0 * math.cos(math.radians(plan.waypoints[0].lat))
+    first = plan_mission(area_ha=5, field_width_m=70, swath_m=7, origin_lon=0.0).waypoints[0]
+    assert first.lon * m_per_deg_lon == pytest.approx(3.5, abs=0.05)
+
+
+def test_last_pass_stays_inside_the_field():
+    plan = plan_mission(area_ha=10, field_width_m=71, swath_m=7, origin_lon=0.0)
+    m_per_deg_lon = 111_320.0 * math.cos(math.radians(plan.waypoints[0].lat))
+    last = plan.waypoints[-1]
+    assert last.lon * m_per_deg_lon <= 71 - 3.5 + 0.05
 
 
 # --- input validation -------------------------------------------------------
