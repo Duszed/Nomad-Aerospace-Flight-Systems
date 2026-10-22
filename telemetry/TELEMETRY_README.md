@@ -7,7 +7,7 @@ agronomic calculations can be reviewed, tested and demonstrated today.
 
 ```bash
 pip install -r requirements.txt
-pytest -v                 # 44 tests, no hardware required
+pytest -v                 # 50 tests, no hardware required
 ```
 
 ## Components
