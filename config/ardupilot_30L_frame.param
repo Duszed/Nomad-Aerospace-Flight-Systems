@@ -162,7 +162,12 @@ SERVO9_FUNCTION,22
 # AUX 1: brushless pump, flow slaved to ground speed.
 SERVO10_FUNCTION,23
 # AUX 2: centrifugal atomiser discs, constant droplet spectrum.
-SPRAY_PUMP_RATE,100
+SPRAY_PUMP_RATE,3.1
+# Pump % per 1 m/s of ground speed (ArduPilot AC_Sprayer).
+# 15 L/ha x 7 m swath x 7 m/s = ~4.4 L/min = ~22% of a 20 L/min pump
+# at cruise, so 22 / 7 = 3.1 %/(m/s). If 100% output gives the 30 L/min
+# maximum instead, use ~2.1. Confirm with a timed bucket test before any
+# field use. Below ~3 m/s SPRAY_PUMP_MIN sets the floor.
 SPRAY_PUMP_MIN,10
 SPRAY_SPINNER,1300
 SPRAY_SPEED_MIN,100
