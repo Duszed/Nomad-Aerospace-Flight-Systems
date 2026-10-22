@@ -111,7 +111,7 @@ def plan_mission(area_ha: float,
     flight_time_min = flight_time_s / 60.0
 
     waypoints = _build_waypoints(passes, pass_length_m, swath_m,
-                                 alt_m, origin_lat, origin_lon)
+                                 alt_m, origin_lat, origin_lon, field_width_m)
 
     return MissionPlan(
         field_area_ha=area_ha,
@@ -129,16 +129,25 @@ def plan_mission(area_ha: float,
 
 def _build_waypoints(passes: int, pass_length_m: float, swath_m: float,
                      alt_m: float, origin_lat: float,
-                     origin_lon: float) -> list[Waypoint]:
-    """Alternating-direction waypoints, spray ON along passes, OFF in turns."""
+                     origin_lon: float, field_width_m: float | None = None) -> list[Waypoint]:
+    """Alternating-direction pass endpoints.
+
+    Each pass is a start point (arrive with spray OFF) and an end point
+    (spray ON on the leg flown to it). Pass centrelines sit half a swath
+    inside the field edge, so the outer swath covers the boundary instead
+    of hanging half outside it.
+    """
     # local flat-earth approximation, adequate for a single field
     m_per_deg_lat = 111_320.0
     m_per_deg_lon = 111_320.0 * math.cos(math.radians(origin_lat))
+    max_offset_m = (field_width_m - swath_m / 2) if field_width_m else None
 
     wps: list[Waypoint] = []
     seq = 0
     for i in range(passes):
-        offset_m = i * swath_m
+        offset_m = swath_m / 2 + i * swath_m
+        if max_offset_m is not None and offset_m > max_offset_m:
+            offset_m = max(swath_m / 2, max_offset_m)
         lon = origin_lon + offset_m / m_per_deg_lon
 
         # even passes run "north", odd passes run "south" - boustrophedon
@@ -147,7 +156,7 @@ def _build_waypoints(passes: int, pass_length_m: float, swath_m: float,
         else:
             start_m, end_m = pass_length_m, 0.0
 
-        for point_m, spray in ((start_m, True), (end_m, True)):
+        for point_m, spray in ((start_m, False), (end_m, True)):
             lat = origin_lat + point_m / m_per_deg_lat
             wps.append(Waypoint(seq=seq, lat=round(lat, 7), lon=round(lon, 7),
                                 alt_m=alt_m, spray_on=spray))
@@ -155,14 +164,53 @@ def _build_waypoints(passes: int, pass_length_m: float, swath_m: float,
     return wps
 
 
-def to_qgc_waypoints(plan: MissionPlan) -> str:
-    """Export as a QGroundControl WPL 110 file for upload to the Cube."""
+# MAVLink frames and commands used in the exported mission
+FRAME_GLOBAL = 0                 # home row: absolute altitude
+FRAME_GLOBAL_RELATIVE_ALT = 3    # takeoff: height above home
+FRAME_GLOBAL_TERRAIN_ALT = 10    # spray legs: height above ground (TF03 via WPNAV_RFND_USE)
+CMD_NAV_WAYPOINT = 16
+CMD_NAV_RETURN_TO_LAUNCH = 20
+CMD_NAV_TAKEOFF = 22
+CMD_DO_SPRAYER = 216
+
+
+def to_qgc_waypoints(plan: MissionPlan, home_lat: float | None = None,
+                     home_lon: float | None = None, takeoff_alt_m: float = 5.0) -> str:
+    """Export as a QGroundControl WPL 110 file for upload to the Cube.
+
+    Row 0 is the home position (the autopilot overwrites it with the real
+    home on arming), then TAKEOFF, then for each pass: fly to the pass
+    start, DO_SPRAYER on, fly to the pass end, DO_SPRAYER off. The mission
+    ends with RTL. Spray legs use the terrain frame so the TF03 LiDAR
+    holds nozzle height above the crop.
+    """
+    wps = plan.waypoints
+    home_lat = wps[0].lat if home_lat is None else home_lat
+    home_lon = wps[0].lon if home_lon is None else home_lon
+
+    rows: list[tuple] = []
+
+    def add(frame, cmd, p1=0, lat=0.0, lon=0.0, alt=0.0):
+        rows.append((frame, cmd, p1, lat, lon, alt))
+
+    add(FRAME_GLOBAL, CMD_NAV_WAYPOINT, lat=home_lat, lon=home_lon)
+    add(FRAME_GLOBAL_RELATIVE_ALT, CMD_NAV_TAKEOFF, alt=takeoff_alt_m)
+    for wp in wps:
+        add(FRAME_GLOBAL_TERRAIN_ALT, CMD_NAV_WAYPOINT, lat=wp.lat, lon=wp.lon, alt=wp.alt_m)
+        # spray_on marks the END of a pass: switch on before flying to it,
+        # i.e. right after arriving at the pass start
+        if not wp.spray_on:
+            add(FRAME_GLOBAL, CMD_DO_SPRAYER, p1=1)
+        else:
+            add(FRAME_GLOBAL, CMD_DO_SPRAYER, p1=0)
+    add(FRAME_GLOBAL, CMD_NAV_RETURN_TO_LAUNCH)
+
     out = ["QGC WPL 110"]
-    for wp in plan.waypoints:
-        # frame 3 = MAV_FRAME_GLOBAL_RELATIVE_ALT, command 16 = NAV_WAYPOINT
+    for seq, (frame, cmd, p1, lat, lon, alt) in enumerate(rows):
+        current = 1 if seq == 0 else 0
         out.append(
-            f"{wp.seq}\t0\t3\t16\t0\t0\t0\t0\t"
-            f"{wp.lat:.7f}\t{wp.lon:.7f}\t{wp.alt_m:.1f}\t1"
+            f"{seq}\t{current}\t{frame}\t{cmd}\t{p1}\t0\t0\t0\t"
+            f"{lat:.7f}\t{lon:.7f}\t{alt:.1f}\t1"
         )
     return "\n".join(out)
 
