@@ -1,0 +1,2 @@
+<option value="">{{ t('d_choose') }}</option>
+{% for f in fields %}<option value="{{ f.id }}" {{ 'selected' if fields|length == 1 }}>{{ f.name }} · {{ num(f.area_ha, 2) }} {{ t('u_ha') }}{% if f.crop %} · {{ f.crop }}{% endif %}</option>{% endfor %}

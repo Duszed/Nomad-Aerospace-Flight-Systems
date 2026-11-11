@@ -18,7 +18,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import Settings
-from .db import Farmer, Field, Job, Outbox, RecordVersion, SigningKey, utcnow
+from .db import (
+    Farmer, Field, Job, Outbox, RecordVersion, Share, ShareEvent, SigningKey, utcnow,
+)
 from .records.canonical import canonical_json, sha256_hex
 from .records.signing import key_id_for, verify_signature
 
@@ -35,7 +37,9 @@ def build_bundle(session: Session, record: RecordVersion) -> dict:
     job = session.get(Job, record.job_id)
     farmer = session.get(Farmer, job.farmer_id)
     fld = session.get(Field, job.field_id)
+    from .shares import owner_share      # the QR already printed on the farmer's PDF
     return {
+        "owner_share": {"token": owner_share(session, record).token},
         "record": {"id": record.id, "job_id": record.job_id, "version": record.version,
                    "payload": record.payload, "payload_sha256": record.payload_sha256,
                    "signature": record.signature, "key_id": record.key_id,
@@ -151,6 +155,17 @@ def receive_bundle(session: Session, bundle: dict) -> bool:
         payload_sha256=rec["payload_sha256"], signature=rec["signature"],
         key_id=rec["key_id"], prev_sha256=rec.get("prev_sha256")))
     session.flush()
+    # 4. the farmer's own link: keep the token the laptop already printed as a QR,
+    #    so a PDF made in the field verifies on this server
+    token = (bundle.get("owner_share") or {}).get("token")
+    if (isinstance(token, str) and 24 <= len(token) <= 64
+            and session.scalar(select(Share).where(Share.token == token)) is None):
+        share = Share(token=token, record_id=record_id, farmer_id=farmer.id,
+                      recipient_type="owner")
+        session.add(share)
+        session.flush()
+        session.add(ShareEvent(share_id=share.id, kind="created",
+                               detail="by atlas for owner (synced from the laptop)"))
     session.add(Outbox(kind="telegram_report", record_id=record_id, farmer_id=farmer.id))
     session.flush()
     return True

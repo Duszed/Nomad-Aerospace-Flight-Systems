@@ -1,8 +1,10 @@
 """Command line: `python -m atlas <command>`.
 
+  start     run the laptop app: dashboard + verify pages, opens the browser
+  stop      stop the laptop app
   demo      run the whole pipeline with no drone and no internet
   ingest    log file (.bin / .ndjson, or - for a live gateway stream) -> signed record + PDF
-  serve     run the verify server
+  serve     run the verify server only (for the Atlas server; no dashboard)
   bot       run the Telegram bot
   sync      push records created offline to the Atlas server
   verify    check a stored record's hash and signature
@@ -16,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -87,6 +90,18 @@ def cmd_ingest(args) -> int:
             print(f"pdf        {path}")
         print(f"verify     {share_url(settings, owner)}")
     return 0
+
+
+def cmd_start(args) -> int:
+    from .dashboard.launcher import start
+    quiet = args.no_browser or bool(os.environ.get("ATLAS_NO_BROWSER"))
+    port = args.port or int(os.environ.get("ATLAS_PORT") or 8000)
+    return start(_settings(args).data_dir, port=port, open_browser=not quiet)
+
+
+def cmd_stop(args) -> int:
+    from .dashboard.launcher import stop
+    return stop(_settings(args).data_dir)
 
 
 def cmd_serve(args) -> int:
@@ -194,6 +209,12 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="command", required=True)
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--data-dir", help="data folder (default: ATLAS_DATA_DIR or ./data)")
+
+    p = sub.add_parser("start", parents=[common], help="laptop app: dashboard + verify")
+    p.add_argument("--port", type=int, default=0, help="default: ATLAS_PORT or 8000")
+    p.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    p.set_defaults(func=cmd_start)
+    sub.add_parser("stop", parents=[common], help="stop the laptop app").set_defaults(func=cmd_stop)
 
     p = sub.add_parser("demo", help="full pipeline, no drone needed")
     p.add_argument("--data-dir", default="data/demo")

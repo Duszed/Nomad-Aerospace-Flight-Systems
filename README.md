@@ -86,7 +86,9 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 * `/telemetry` — Ground gateway (Python) and field edge-node firmware (C++)
 * `/atlas` — **Nomad Atlas**, the spray-record platform: flight log → signed
   record → PDF → Telegram → shareable, verifiable link. See [`ATLAS.md`](ATLAS.md);
-  `python -m atlas demo` runs it end to end with no drone
+  `python -m atlas demo` runs it end to end with no drone. To use the
+  dashboard without typing commands, double-click **Start Atlas**
+  (see [`HOW TO START.md`](HOW%20TO%20START.md))
 * `SPECS.md` — Master platform specification (single source of truth)
 
 ---

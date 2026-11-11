@@ -103,8 +103,11 @@ def _weather_text(w: dict, lang: str) -> str:
 
 
 def render_pdf(payload: dict, record_sha256: str, verify_url: str, lang: str = "uz",
-               share: dict | None = None) -> bytes:
+               share: dict | None = None, draft: bool = False) -> bytes:
     """Render a record as a one-page PDF.
+
+    `draft=True` stamps the page DRAFT - NOT SIGNED (dashboard preview of a
+    job that has not been signed; it is not a record and cannot be verified).
 
     `share` (optional) = {"recipient_type": ..., "expires_utc": iso or None}:
     printed on copies made for a third party, whose QR is that share's link.
@@ -292,6 +295,16 @@ def render_pdf(payload: dict, record_sha256: str, verify_url: str, lang: str = "
         c.translate(PAGE_W / 2, PAGE_H / 2)
         c.rotate(35)
         c.drawCentredString(0, 0, "SAMPLE DATA")
+        c.restoreState()
+
+    if draft:
+        c.saveState()
+        c.setFillColor(HexColor("#b3261e"))
+        c.setFillAlpha(0.16)
+        c.setFont(FONT_BOLD, 44)
+        c.translate(PAGE_W / 2, PAGE_H / 2 - 150)
+        c.rotate(35)
+        c.drawCentredString(0, 0, "DRAFT - NOT SIGNED")
         c.restoreState()
 
     c.showPage()

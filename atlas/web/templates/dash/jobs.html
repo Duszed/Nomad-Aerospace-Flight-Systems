@@ -1,0 +1,28 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<div class="headrow">
+  <h1>{{ t('d_all_jobs') }}</h1>
+  <a class="btn primary big" href="/jobs/new">+ {{ t('d_new_job') }}</a>
+</div>
+
+{% if drafts %}
+<h2>{{ t('d_drafts') }}</h2>
+<div class="card list">{% for d in drafts %}{{ m.draft_row(d) }}{% endfor %}</div>
+{% endif %}
+
+<form class="card filters" method="get" action="/jobs"
+      hx-get="/jobs/table" hx-trigger="input delay:300ms, change" hx-target="#jobs-table">
+  <input type="search" name="q" value="{{ q }}" placeholder="{{ t('d_search_jobs') }}" autocomplete="off">
+  <label>{{ t('d_status') }}
+    <select name="state"><option value="">{{ t('d_all') }}</option>
+      {% for s in states %}<option value="{{ s }}" {{ 'selected' if s == state }}>{{ t('d_st_' ~ s) }}</option>{% endfor %}</select></label>
+  <label>{{ t('crop') }}
+    <select name="crop"><option value="">{{ t('d_all') }}</option>
+      {% for c in crops %}<option value="{{ c }}" {{ 'selected' if c == crop }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>{{ t('d_from') }}<input type="date" name="date_from" value="{{ date_from }}"></label>
+  <label>{{ t('d_to') }}<input type="date" name="date_to" value="{{ date_to }}"></label>
+</form>
+
+<div id="jobs-table">{% include "dash/_jobs_table.html" %}</div>
+{% endblock %}

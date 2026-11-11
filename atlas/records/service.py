@@ -79,29 +79,22 @@ def _sign_and_store(session: Session, signer: Signer, job: Job, payload: dict,
     return record
 
 
-def create_record(session: Session, signer: Signer, job_in: JobIn, boundary: Polygon,
-                  track: Track, coverage: CoverageResult) -> RecordVersion:
-    """Create version 1 of a job's signed record."""
-    ensure_key_registered(session, signer)
-    farmer = _get_or_create_farmer(session, job_in)
-    fld = _get_or_create_field(session, farmer, job_in.field_name, boundary,
-                               coverage.field_area_ha)
-    job = Job(farmer_id=farmer.id, field_id=fld.id, sample_data=job_in.sample_data)
-    session.add(job)
-    session.flush()
-
+def build_payload(*, record_id: str, job_id: str, farmer_id: str, farmer_name: str,
+                  field_id: str, field_name: str, job_in: JobIn, track: Track,
+                  coverage: CoverageResult, key_id: str) -> dict:
+    """The record content for version 1 of a job (what gets signed)."""
     geo = coverage.geojson()
-    payload = {
+    return {
         "schema": RECORD_SCHEMA,
-        "record_id": new_id(),
-        "job_id": job.id,
+        "record_id": record_id,
+        "job_id": job_id,
         "version": 1,
         "supersedes_sha256": None,
         "amendment_reason": None,
         "created_utc": _iso(utcnow()),
         "sample_data": job_in.sample_data,
-        "farmer": {"id": farmer.id, "name": farmer.name},
-        "field": {"id": fld.id, "name": fld.name,
+        "farmer": {"id": farmer_id, "name": farmer_name},
+        "field": {"id": field_id, "name": field_name,
                   "area_ha": round(coverage.field_area_ha, 4),
                   "boundary": geo["field"]},
         "job": {
@@ -129,8 +122,24 @@ def create_record(session: Session, signer: Signer, job_in: JobIn, boundary: Pol
         "results": coverage.numbers(),
         "geometry": {"sprayed": geo["sprayed"], "missed": geo["missed"],
                      "overlap": geo["overlap"]},
-        "signer": {"key_id": signer.key_id, "algorithm": ALGORITHM},
+        "signer": {"key_id": key_id, "algorithm": ALGORITHM},
     }
+
+
+def create_record(session: Session, signer: Signer, job_in: JobIn, boundary: Polygon,
+                  track: Track, coverage: CoverageResult) -> RecordVersion:
+    """Create version 1 of a job's signed record."""
+    ensure_key_registered(session, signer)
+    farmer = _get_or_create_farmer(session, job_in)
+    fld = _get_or_create_field(session, farmer, job_in.field_name, boundary,
+                               coverage.field_area_ha)
+    job = Job(farmer_id=farmer.id, field_id=fld.id, sample_data=job_in.sample_data)
+    session.add(job)
+    session.flush()
+    payload = build_payload(
+        record_id=new_id(), job_id=job.id, farmer_id=farmer.id, farmer_name=farmer.name,
+        field_id=fld.id, field_name=fld.name, job_in=job_in, track=track,
+        coverage=coverage, key_id=signer.key_id)
     return _sign_and_store(session, signer, job, payload, prev_sha256=None)
 
 

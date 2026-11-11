@@ -16,11 +16,14 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -43,6 +46,20 @@ from ..sync import SyncError, receive_bundle
 NOT_FOUND = "not_found"
 HTTP_STATUS = {VERIFIED: 200, MODIFIED: 200, REVOKED: 410, EXPIRED: 410, NOT_FOUND: 404,
                "home": 200}
+
+# The verify side: reachable by anyone holding a share link.
+PUBLIC_PREFIXES = ("/v/", "/api/verify/", "/api/sync/", "/.well-known/", "/healthz")
+# The dashboard answers only to a browser on this same computer.
+LOCAL_CLIENTS = {"127.0.0.1", "::1"}
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+VERIFY_CSP = ("default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
+              "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+DASHBOARD_CSP = ("default-src 'self'; img-src 'self' data: blob:; "
+                 "style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; "
+                 "form-action 'self'; frame-ancestors 'none'")
+STATIC_DIR = Path(__file__).parent / "static"
+
+log = logging.getLogger("atlas.web")
 
 _templates = Environment(
     loader=FileSystemLoader(Path(__file__).parent / "templates"),
@@ -76,21 +93,92 @@ def resolve(session: Session, token: str, log: bool) -> Resolution:
     return Resolution(check.status, share=share, record=record, check=check)
 
 
-def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
+class _Fixed:
+    """Settings and database that never change (the server, the tests)."""
+
+    def __init__(self, settings: Settings, Session: sessionmaker) -> None:
+        self.settings, self.Session = settings, Session
+
+
+def _is_public(path: str) -> bool:
+    return path.startswith(PUBLIC_PREFIXES)
+
+
+def _local_only(request: Request) -> str | None:
+    """Why a dashboard request is refused, or None if it may proceed."""
+    client = request.client.host if request.client else ""
+    if client not in LOCAL_CLIENTS:
+        return "the dashboard only answers on the computer it runs on"
+    host = urlsplit("//" + request.headers.get("host", "")).hostname or ""
+    if host not in LOCAL_HOSTS:
+        return "the dashboard must be opened as http://localhost"
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        # A change must come from the dashboard's own pages, never from
+        # another website open in the same browser.
+        site = request.headers.get("sec-fetch-site")
+        origin = request.headers.get("origin")
+        if site is not None:
+            if site not in ("same-origin", "none"):
+                return "requests from other websites are refused"
+        elif origin is not None and (urlsplit(origin).hostname or "") not in LOCAL_HOSTS:
+            return "requests from other websites are refused"
+    return None
+
+
+def create_app(settings: Settings | None = None, Session: sessionmaker | None = None,
+               runtime=None) -> FastAPI:
+    """The verify server. With `runtime`, also the laptop dashboard.
+
+    `runtime` (atlas.dashboard.Runtime) supplies the settings and database,
+    which change when demo data is loaded or cleared. The dashboard routes
+    exist only then, and only answer to this computer; the public server is
+    always created without it.
+    """
     app = FastAPI(title="Nomad Atlas", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url=None)
+    state = runtime if runtime is not None else _Fixed(settings, Session)
 
     @app.middleware("http")
     async def privacy_headers(request: Request, call_next):
+        path = request.url.path
+        dashboard = runtime is not None and not _is_public(path)
+        if dashboard:
+            refused = _local_only(request)
+            if refused:
+                return PlainTextResponse(f"Refused: {refused}.", status_code=403)
         response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["Referrer-Policy"] = "no-referrer"      # tokens stay out of referrers
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; "
-            "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+        if not dashboard:
+            response.headers["Referrer-Policy"] = "no-referrer"  # tokens stay out of referrers
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Content-Security-Policy"] = VERIFY_CSP
+        else:
+            response.headers["Referrer-Policy"] = "same-origin"  # nothing leaves this laptop
+            if path.startswith("/static/"):
+                response.headers["Cache-Control"] = "no-cache"   # revalidate, never stale
+            elif not path.startswith("/tiles/"):
+                response.headers["Cache-Control"] = "no-store"
+            if response.headers.get("content-type", "").startswith("text/html"):
+                response.headers["Content-Security-Policy"] = DASHBOARD_CSP
         return response
+
+    if runtime is not None:
+        from ..dashboard.views import build_router
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+        app.include_router(build_router(runtime, _templates))
+
+        @app.exception_handler(Exception)
+        async def plain_error(request: Request, exc: Exception):
+            log.exception("dashboard error on %s", request.url.path)
+            return HTMLResponse(
+                "<!doctype html><meta charset=utf-8><title>Nomad Atlas</title>"
+                "<body style='background:#070B14;color:#F3F6FA;font:18px sans-serif;"
+                "padding:48px;max-width:720px'><h1>Something went wrong</h1>"
+                "<p>Atlas could not finish that step. Your data is safe. "
+                "Go back and try again; if it keeps happening, close Atlas and start it again."
+                "</p><p><a style='color:#CFFF3E' href='/'>Back to Home</a></p></body>",
+                status_code=500)
 
     def page(lang: str, status: str, **ctx) -> HTMLResponse:
         html = _templates.get_template("verify.html").render(
@@ -103,13 +191,14 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
     def healthz():
         return {"ok": True, "service": "nomad-atlas", "version": __version__}
 
-    @app.get("/", response_class=HTMLResponse)
-    def home(lang: str = "uz"):
-        return page(norm_lang(lang), "home", token=None)
+    if runtime is None:
+        @app.get("/", response_class=HTMLResponse)
+        def home(lang: str = "uz"):
+            return page(norm_lang(lang), "home", token=None)
 
     @app.get("/v/{token}", response_class=HTMLResponse)
     def verify_page(token: str, lang: str | None = None):
-        with Session() as session:
+        with state.Session() as session:
             r = resolve(session, token, log=True)
             if r.status == NOT_FOUND:
                 return page(norm_lang(lang), NOT_FOUND, token=token)
@@ -189,17 +278,17 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
 
     @app.get("/v/{token}/map.png")
     def map_png(token: str, lang: str = "uz"):
-        with Session() as session:
+        with state.Session() as session:
             r = _active_verified(session, token)
             return Response(render_map_png(r.check.payload, norm_lang(lang), dpi=160),
                             media_type="image/png")
 
     @app.get("/v/{token}/report.pdf")
     def report(token: str, lang: str = "uz"):
-        with Session() as session:
+        with state.Session() as session:
             r = _active_verified(session, token)
             lang = norm_lang(lang)
-            pdf = report_pdf(settings, r.record, r.share, lang)
+            pdf = report_pdf(state.settings, r.record, r.share, lang)
             name = report_filename(r.record, lang)
             return Response(pdf, media_type="application/pdf", headers={
                 "Content-Disposition": f'inline; filename="{name}"'})
@@ -207,7 +296,7 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
     @app.get("/v/{token}/record.json")
     def record_json(token: str):
         """Everything needed to check the signature without trusting this page."""
-        with Session() as session:
+        with state.Session() as session:
             r = _active_verified(session, token)
             key = session.get(SigningKey, r.record.key_id)
             return JSONResponse({
@@ -224,7 +313,7 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
 
     @app.get("/api/verify/{token}")
     def api_verify(token: str):
-        with Session() as session:
+        with state.Session() as session:
             r = resolve(session, token, log=True)
             body = {"status": r.status, "checked_utc": utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
             if r.record is not None:
@@ -236,7 +325,7 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
 
     @app.get("/.well-known/atlas-keys.json")
     def public_keys():
-        with Session() as session:
+        with state.Session() as session:
             keys = session.scalars(select(SigningKey).order_by(SigningKey.created_at)).all()
             return {"algorithm": ALGORITHM, "keys": [
                 {"key_id": k.key_id, "public_key": k.public_key, "label": k.label}
@@ -245,7 +334,8 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
     @app.post("/api/sync/record")
     async def sync_record(request: Request, authorization: str | None = Header(default=None)):
         """Laptop -> server: accept a signed record created offline."""
-        if not settings.sync_token:
+        settings = state.settings
+        if not settings.sync_token or runtime is not None:
             raise HTTPException(403, "sync is not enabled on this server")
         given = (authorization or "").removeprefix("Bearer ").strip()
         if not hmac.compare_digest(given.encode(), settings.sync_token.encode()):
@@ -254,7 +344,7 @@ def create_app(settings: Settings, Session: sessionmaker) -> FastAPI:
             bundle = json.loads(await request.body())
         except ValueError:
             raise HTTPException(400, "body is not JSON") from None
-        with Session() as session:
+        with state.Session() as session:
             try:
                 created = receive_bundle(session, bundle)
             except SyncError as exc:

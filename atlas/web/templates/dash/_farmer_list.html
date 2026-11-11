@@ -1,0 +1,8 @@
+{% for f in farmers %}
+<a class="pick {{ 'on' if farmer and farmer.id == f.id }}" href="/farmers?id={{ f.id }}">
+  <span><b>{{ f.name }}</b><small>{{ f.phone }}</small></span>
+  <span class="dot {{ 'on' if f.telegram_chat_id else 'off' }}" title="{{ t('d_tg_linked') if f.telegram_chat_id else t('d_tg_not_linked') }}">Telegram</span>
+</a>
+{% else %}
+<p class="empty">{{ t('d_no_farmers') }}</p>
+{% endfor %}

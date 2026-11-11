@@ -305,6 +305,10 @@ def cli() -> None:
     ap.add_argument("--area", type=float, default=DEMO_AREA_HA)
     ap.add_argument("--width", type=float, default=DEMO_WIDTH_M)
     ap.add_argument("--swath", type=float, default=DEFAULT_SWATH_M)
+    ap.add_argument("--origin-lat", type=float, default=None,
+                    help="mission mode: latitude of the field's south-west corner")
+    ap.add_argument("--origin-lon", type=float, default=None,
+                    help="mission mode: longitude of the field's south-west corner")
     ap.add_argument("--perfect", action="store_true",
                     help="mission mode: no dropout / off-line pass")
     ap.add_argument("--flow-meter", action="store_true",
@@ -312,8 +316,11 @@ def cli() -> None:
     args = ap.parse_args()
 
     if args.mission:
+        origin = {}
+        if args.origin_lat is not None and args.origin_lon is not None:
+            origin = {"origin_lat": args.origin_lat, "origin_lon": args.origin_lon}
         samples = mission_samples(args.area, args.width, args.swath,
-                                  faults=None if args.perfect else DEFAULT_FAULTS)
+                                  faults=None if args.perfect else DEFAULT_FAULTS, **origin)
         run_mission(args.connection, args.speedup, samples, args.flow_meter)
     else:
         main()

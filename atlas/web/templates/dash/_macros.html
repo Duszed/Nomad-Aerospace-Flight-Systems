@@ -1,0 +1,79 @@
+{% macro chip(state) -%}
+<span class="chip st-{{ state }}">{{ t('d_st_' ~ state) }}</span>
+{%- endmacro %}
+
+{% macro sample_chip() -%}
+<span class="chip sample" title="Sample data – not a customer record">{{ t('sample_notice') }}</span>
+{%- endmacro %}
+
+{% macro job_row(v) %}
+<a class="row" href="/jobs/{{ v.job.id }}">
+  <span class="when">{{ v.local.strftime('%d.%m.%Y') }}<small>{{ v.local.strftime('%H:%M') }}</small></span>
+  <span class="who"><b>{{ v.farmer.name }}</b><small>{{ v.field.name }}{% if v.details.crop %} · {{ v.details.crop }}{% endif %}{% if v.details.product %} · {{ v.details.product }}{% endif %}</small></span>
+  <span class="cov">{% if v.res.coverage_pct is defined %}{{ num(v.res.coverage_pct, 1) }} %{% else %}—{% endif %}</span>
+  <span class="state">{{ chip(v.delivery.state) }}{% if v.sample %} {{ sample_chip() }}{% endif %}</span>
+  <span class="go">›</span>
+</a>
+{% endmacro %}
+
+{% macro draft_row(d) %}
+<div class="row draft">
+  <span class="when">{{ dt(d.created_at)[:10] }}</span>
+  <span class="who"><b>{{ d.farmer.name }}</b><small>{{ d.field.name }}</small></span>
+  <span class="cov"></span>
+  <span class="state"><span class="chip st-draft">{{ t('d_draft') }}</span>{% if d.sample_data %} {{ sample_chip() }}{% endif %}</span>
+  <span class="acts">
+    <a class="btn small" href="/drafts/{{ d.id }}/{{ 'results' if d.log_path else 'details' }}">{{ t('d_continue') }}</a>
+    <form method="post" action="/drafts/{{ d.id }}/delete" data-confirm="{{ t('d_delete') }}?"><button class="btn small ghost">{{ t('d_delete') }}</button></form>
+  </span>
+</div>
+{% endmacro %}
+
+{% macro steps(step) %}
+<ol class="steps">
+  {% for n in (1, 2, 3, 4) %}<li class="{{ 'on' if n == step }}{{ ' done' if n < step }}"><span>{{ n }}</span>{{ t('d_step' ~ n) }}</li>{% endfor %}
+</ol>
+{% endmacro %}
+
+{% macro results(res, svg) %}
+<div class="results">
+  <div class="card mapcard">
+    {{ svg }}
+    <div class="legend">
+      <span><i class="sw sprayed"></i>{{ t('legend_sprayed') }}</span>
+      <span><i class="sw missed"></i>{{ t('legend_missed') }}</span>
+      <span><i class="sw overlap"></i>{{ t('legend_overlap') }}</span>
+    </div>
+  </div>
+  <div class="card numbers">
+    <div class="big"><span>{{ t('coverage') }}</span><strong>{{ num(res.coverage_pct, 1) }} %</strong></div>
+    <dl>
+      <dt>{{ t('field_area') }}</dt><dd>{{ num(res.field_area_ha, 2) }} {{ t('u_ha') }}</dd>
+      <dt>{{ t('sprayed_area') }}</dt><dd class="c-sprayed">{{ num(res.covered_in_field_ha, 2) }} {{ t('u_ha') }}</dd>
+      <dt>{{ t('missed_area') }}</dt><dd class="c-missed">{{ num(res.missed_area_ha, 3) }} {{ t('u_ha') }}{% if res.missed_strips %} · {{ t('missed_strips', n=res.missed_strips) }}{% endif %}</dd>
+      <dt>{{ t('overlap_area') }}</dt><dd class="c-overlap">{{ num(res.overlap_area_ha, 3) }} {{ t('u_ha') }}</dd>
+      <dt>{{ t('outside_area') }}</dt><dd>{{ num(res.outside_field_ha, 3) }} {{ t('u_ha') }}</dd>
+      <dt>{{ t('litres_applied') }}</dt>
+      <dd>{{ num(res.litres_applied, 1) }} {{ t('u_l') }}
+        {% if res.litres_basis == 'estimated' %}<span class="chip est">{{ t('d_estimated') }}</span>{% else %}<small>{{ t('basis_' ~ res.litres_basis) }}</small>{% endif %}</dd>
+      <dt>{{ t('actual_rate') }}</dt>
+      <dd>{{ num(res.actual_rate_l_ha, 1) }} {{ t('u_l_ha') }}
+        {% if res.litres_basis == 'estimated' %}<span class="chip est">{{ t('d_estimated') }}</span>{% endif %}
+        <small>{{ t('planned_rate') }}: {{ num(res.planned_rate_l_ha, 1) }} {{ t('u_l_ha') }} · {{ t('vs_plan', pct=pct(res.rate_deviation_pct)) }}</small></dd>
+    </dl>
+    {% if res.litres_basis == 'estimated' %}<p class="note est-note">{{ t('estimated_note') }}</p>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro drawbox(center, existing='') %}
+<div class="drawbox">
+  <div class="drawmap" data-lat="{{ center[0] }}" data-lon="{{ center[1] }}" data-existing="{{ existing }}"></div>
+  <input type="hidden" name="drawn">
+  <div class="drawbar">
+    <span><b class="count">0</b> {{ t('d_points') }}</span>
+    <button type="button" class="btn small ghost" data-draw="undo">{{ t('d_undo') }}</button>
+    <button type="button" class="btn small ghost" data-draw="clear">{{ t('d_clear') }}</button>
+  </div>
+</div>
+{% endmacro %}

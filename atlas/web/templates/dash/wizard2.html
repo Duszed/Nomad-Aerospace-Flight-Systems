@@ -1,0 +1,27 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<h1>{{ t('d_new_job') }} <small>{{ draft.farmer.name }} · {{ draft.field.name }}</small></h1>
+{{ m.steps(step) }}
+{% set w = d.weather or {} %}
+<form method="post" action="/drafts/{{ draft.id }}/details" class="card stack">
+  <div class="grid3">
+    <label>{{ t('crop') }}<input name="crop" required maxlength="100" value="{{ d.crop or '' }}"></label>
+    <label>{{ t('product') }}<input name="product" required maxlength="200" value="{{ d.product or '' }}"></label>
+    <label>{{ t('batch') }}<input name="batch" maxlength="100" value="{{ d.batch or '' }}"></label>
+    <label>{{ t('d_planned_dose') }}<input name="planned_rate_l_ha" required inputmode="decimal" value="{{ d.planned_rate_l_ha if d.planned_rate_l_ha is not none else '' }}"></label>
+    <label>{{ t('d_swath_m') }}<input name="swath_m" required inputmode="decimal" value="{{ d.swath_m if d.swath_m is not none else '' }}"></label>
+    <label>{{ t('d_tank') }}<input name="tank_litres_used" inputmode="decimal" value="{{ d.tank_litres_used if d.tank_litres_used is not none else '' }}"><small>{{ t('d_tank_hint') }}</small></label>
+    <label>{{ t('pilot') }}<input name="pilot" required maxlength="200" value="{{ d.pilot or '' }}"></label>
+    <label>{{ t('drone_id') }}<input name="drone_id" required maxlength="100" value="{{ d.drone_id or '' }}"></label>
+  </div>
+  <h3>{{ t('weather') }}</h3>
+  <div class="grid4">
+    <label>{{ t('d_temp') }}<input name="temperature_c" inputmode="decimal" value="{{ w.temperature_c if w.temperature_c is not none else '' }}"></label>
+    <label>{{ t('d_humidity_pct') }}<input name="humidity_pct" inputmode="decimal" value="{{ w.humidity_pct if w.humidity_pct is not none else '' }}"></label>
+    <label>{{ t('d_wind_ms') }}<input name="wind_ms" inputmode="decimal" value="{{ w.wind_ms if w.wind_ms is not none else '' }}"></label>
+    <label>{{ t('d_wind_dir') }}<input name="wind_direction" maxlength="20" value="{{ w.wind_direction or '' }}"></label>
+  </div>
+  <div class="actions"><a class="btn ghost" href="/">{{ t('d_back') }}</a><button class="btn primary big">{{ t('d_next') }} ›</button></div>
+</form>
+{% endblock %}

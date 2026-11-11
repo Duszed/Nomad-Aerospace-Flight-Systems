@@ -1,0 +1,39 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<h1>{{ t('d_new_job') }} <small>{{ draft.farmer.name }} · {{ draft.field.name }}</small></h1>
+{{ m.steps(step) }}
+<div class="grid2 flight">
+  <form class="card dropzone" method="post" action="/drafts/{{ draft.id }}/upload" enctype="multipart/form-data" data-busy="{{ t('d_reading_log') }}">
+    <input type="file" name="log" id="log-input" accept=".bin">
+    <label for="log-input"><span class="icon">⬆</span><strong>{{ t('d_drop_log') }}</strong><span>{{ t('d_or_choose') }}</span></label>
+  </form>
+
+  <div class="card live">
+    <h3>{{ t('d_live_title') }}</h3>
+    <p class="note">{{ t('d_live_hint') }}</p>
+    {% set draft_id = draft.id %}
+    {% include "dash/_live.html" %}
+    {% if live.state == IDLE %}
+      {% if live_busy %}<p class="flash err">{{ t('d_live_busy') }}</p>{% else %}
+      <form method="post" action="/drafts/{{ draft.id }}/live/start">
+        <input type="hidden" name="mode" value="drone">
+        <button class="btn big">{{ t('d_live_start') }}</button>
+        <small class="note">{{ t('d_drone_conn') }}: <code>{{ connection }}</code></small>
+      </form>
+      <form method="post" action="/drafts/{{ draft.id }}/live/start">
+        <input type="hidden" name="mode" value="sim">
+        <button class="btn ghost">{{ t('d_live_sim') }}</button>
+        <small class="note">{{ t('d_sim_sample') }}</small>
+      </form>
+      {% endif %}
+    {% else %}
+      <div class="actions left">
+        <form method="post" action="/drafts/{{ draft.id }}/live/finish" data-busy="{{ t('d_reading_log') }}"><button class="btn primary big">{{ t('d_live_finish') }}</button></form>
+        <form method="post" action="/drafts/{{ draft.id }}/live/cancel"><button class="btn ghost">{{ t('d_cancel') }}</button></form>
+      </div>
+    {% endif %}
+  </div>
+</div>
+<div class="actions"><a class="btn ghost" href="/drafts/{{ draft.id }}/details">‹ {{ t('d_back') }}</a></div>
+{% endblock %}

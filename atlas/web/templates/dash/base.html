@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomad Atlas</title>
+{% block head %}{% endblock %}
+<link rel="stylesheet" href="/static/app.css?v={{ version }}">
+<script src="/static/vendor/htmx.min.js" defer></script>
+<script src="/static/app.js?v={{ version }}" defer></script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">NOMAD <b>ATLAS</b></a>
+  <nav>
+    <a href="/" class="{{ 'on' if nav == 'home' }}">{{ t('d_home') }}</a>
+    <a href="/farmers" class="{{ 'on' if nav == 'farmers' }}">{{ t('d_farmers') }}</a>
+    <a href="/jobs" class="{{ 'on' if nav == 'jobs' }}">{{ t('d_jobs') }}</a>
+    <a href="/settings" class="{{ 'on' if nav == 'settings' }}">{{ t('d_settings') }}</a>
+  </nav>
+  <div class="langs">
+    {% for code, name in languages.items() %}<a href="/lang/{{ code }}?next={{ here }}" title="{{ name }}" class="{{ 'on' if code == lang }}">{{ code|upper }}</a>{% endfor %}
+  </div>
+</header>
+{% if demo %}
+<div class="demo-banner">
+  <span><b>{{ t('d_demo_mode') }}</b> · {{ t('sample_notice') }}{% if lang != 'en' %} · Sample data – not a customer record{% endif %}</span>
+  <form method="post" action="/demo/clear"><button class="btn small">{{ t('d_clear_demo') }}</button></form>
+</div>
+{% endif %}
+<main>
+  {% for kind, message in flash %}<div class="flash {{ kind }}" role="status">{{ message }}</div>{% endfor %}
+  {% block main %}{% endblock %}
+</main>
+<div id="busy" hidden><div class="spinner"></div><p id="busy-text"></p></div>
+</body>
+</html>

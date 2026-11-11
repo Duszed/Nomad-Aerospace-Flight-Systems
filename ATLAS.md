@@ -12,6 +12,51 @@ NDJSON     + pyproj   Ed25519   PDF + QR   bot       revocable  Verified / Modif
 └────────── offline, on the field laptop ─────┘ └──── needs internet: Atlas server ────┘
 ```
 
+## Not a developer? Start here
+
+Double-click **Start Atlas** (Windows: `Start Atlas.bat`, Mac/Linux:
+`start-atlas.sh`). It sets everything up the first time, starts Atlas and
+opens the dashboard at `http://localhost:8000`. Step-by-step:
+[HOW TO START.md](HOW%20TO%20START.md).
+
+## The dashboard (pilot / operator, runs on the laptop)
+
+| Screen | What it does |
+|---|---|
+| Home | Today's jobs, hectares sprayed this week and this season, sync status, **New job** |
+| Farmers & fields | Add and edit farmers and fields. A field boundary is uploaded (GeoJSON, KML, QGroundControl plan) or drawn on a map |
+| New job | Four steps: farmer and field → job details and weather → flight data (drop a `.bin`, or receive live through the gateway) → results, **Preview PDF**, **Sign & send to farmer** |
+| Jobs | Search and filter all jobs. A job shows its map, numbers, PDF, signature status, Telegram delivery and shares, with a revoke button |
+| Settings | Telegram bot token, server address for sync, signing key, swath width, sprayer data source, language, demo data |
+
+Server-rendered HTML with HTMX, in Uzbek, Russian and English. Nothing is
+loaded from the internet: HTMX, Leaflet and the fonts are in
+`atlas/web/static/vendor/`.
+
+* **Draft, then sign.** A new job is a draft until **Sign & send**. Only
+  then is the record signed and queued for the farmer. Drafts are never
+  sent anywhere.
+* **Demo mode.** **Load demo data** creates sample farmers, fields and three
+  finished jobs with the simulator, in a separate folder with its own
+  database and signing key (`data/demo-dashboard/`). Every page then says
+  "Sample data – not a customer record", and nothing is sent to Telegram or
+  a server. **Clear demo data** deletes that folder; customer data is never
+  touched.
+* **Sending.** With a bot token and no server address, the laptop runs the
+  Telegram bot itself whenever it is online. With a server address and sync
+  password, the laptop pushes records to the server and the server sends.
+  Offline, everything waits in the queue.
+* **Only on this computer.** The dashboard answers only to a browser on the
+  same computer, and refuses changes coming from other websites. The public
+  server (`python -m atlas serve`, Docker) has no dashboard at all.
+* **Map pictures.** The boundary-drawing map shows OpenStreetMap tiles.
+  They are fetched by the laptop app, with only the tile numbers in the
+  request, and saved in `data/tiles/`; areas already viewed work offline.
+  Result maps are drawn from the record's own geometry and use no tiles.
+* **Live receive** starts the existing gateway, which only reads telemetry.
+  "Simulated flight" runs the simulator over the chosen field and marks the
+  job as sample data.
+
 ## Setup (under 5 minutes)
 
 Python 3.11 or newer. No drone, Docker, Telegram account or internet needed
@@ -112,7 +157,9 @@ the verify link. Other commands:
 ```bash
 python -m atlas verify RECORD_ID                       # recompute hash, check signature
 python -m atlas amend RECORD_ID --set batch=B-17 --reason "Batch mistyped"   # new signed version
-python -m atlas serve                                   # verify server on :8000
+python -m atlas start                                   # laptop app: dashboard + verify pages
+python -m atlas stop                                    # stop the laptop app
+python -m atlas serve                                   # verify server only (no dashboard) on :8000
 python -m atlas bot                                     # Telegram bot (needs ATLAS_BOT_TOKEN)
 python -m atlas sync                                    # push offline records to the server
 python -m atlas keys show                               # this laptop's public signing key
@@ -206,7 +253,8 @@ atlas/
   records/     canonical JSON, Ed25519 signing, create / amend / verify
   report/      coverage map and one-page PDF
   bot/         Telegram bot, local Bot API stand-in for tests and the demo
-  web/         verify server and page
+  web/         verify server and page; dashboard templates and static files
+  dashboard/   laptop app: screens, drafts, demo data, live receive, start/stop
   shares.py  sync.py  pipeline.py  demo.py  cli.py  db.py  i18n.py  config.py
 telemetry/     existing gateway, coverage logger, planner, simulator (extended, not rewritten)
 tests/atlas/   Atlas tests
@@ -221,8 +269,9 @@ Changes to the existing `telemetry/` files are additive:
   9–16 are visible.
 * `coverage_logger.py` gains an optional `spray_source` and `keep_track`.
   Default behaviour is unchanged.
-* `simulate_telemetry.py` gains `--mission`. Running it with no arguments
-  behaves as before.
+* `simulate_telemetry.py` gains `--mission` (and `--origin-lat` /
+  `--origin-lon` to fly it over another field). Running it with no
+  arguments behaves as before.
 * `spray_planner.py` gains `field_boundary_lonlat()`.
 
 ## Known limits of the prototype
@@ -235,3 +284,14 @@ Changes to the existing `telemetry/` files are additive:
 * "Problems" on the Modified page are in English only.
 * One job is one log file. A job flown over several batteries needs the
   logs joined first.
+* The dashboard has no login: anyone using the laptop can use it.
+* The Telegram bot token and sync password are stored unencrypted in
+  `data/settings.json`.
+* With a server configured, the laptop shows "Sent to server" but does not
+  yet show what happens afterwards (delivery, confirmation, shares made on
+  the server).
+* The boundary map is a street map (OpenStreetMap); field edges are often
+  not visible on it. Uploading the boundary is more precise.
+* Windows: if Python is missing, `Start Atlas.bat` installs it with winget
+  after asking. This path has not been run on a computer without Python.
+* The Mac/Linux start script has not been run on a Mac or Linux computer.

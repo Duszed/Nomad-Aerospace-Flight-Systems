@@ -1,0 +1,41 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<section class="cards3">
+  <div class="card stat">
+    <h3>{{ t('d_this_week') }}</h3>
+    <strong>{{ num(totals.week_ha, 1) }}</strong><span class="unit">{{ t('d_ha_sprayed') }}</span>
+    <small>{{ t('d_n_jobs', n=totals.week_jobs) }}</small>
+  </div>
+  <div class="card stat">
+    <h3>{{ t('d_this_season') }}</h3>
+    <strong>{{ num(totals.season_ha, 1) }}</strong><span class="unit">{{ t('d_ha_sprayed') }}</span>
+    <small>{{ t('d_n_jobs', n=totals.season_jobs) }}</small>
+  </div>
+  {% include "dash/_sync.html" %}
+</section>
+
+<section>
+  <div class="headrow">
+    <h2>{{ t('d_todays_jobs') }}</h2>
+    <a class="btn primary big" href="/jobs/new">+ {{ t('d_new_job') }}</a>
+  </div>
+  <div class="card list">
+    {% for v in totals.today %}{{ m.job_row(v) }}{% else %}<p class="empty">{{ t('d_no_jobs_today') }}</p>{% endfor %}
+  </div>
+</section>
+
+{% if drafts %}
+<section>
+  <h2>{{ t('d_drafts') }}</h2>
+  <div class="card list">{% for d in drafts %}{{ m.draft_row(d) }}{% endfor %}</div>
+</section>
+{% endif %}
+
+{% if empty and not demo %}
+<section class="card demo-offer">
+  <p>{{ t('d_demo_empty') }}</p>
+  <form method="post" action="/demo/load" data-busy="{{ t('d_demo_loading') }}"><button class="btn">{{ t('d_load_demo') }}</button></form>
+</section>
+{% endif %}
+{% endblock %}

@@ -68,6 +68,7 @@ class Field(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
     farmer_id: Mapped[str] = mapped_column(ForeignKey("farmer.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
+    crop: Mapped[str] = mapped_column(String(100), default="", server_default="")
     boundary_geojson: Mapped[str] = mapped_column(Text)
     area_ha: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
@@ -185,6 +186,29 @@ class Outbox(Base):
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
+class Draft(Base):
+    """A job being prepared in the dashboard: computed, but NOT signed.
+
+    Nothing here is a record. "Sign & send" recomputes from the kept log,
+    creates the signed RecordVersion and deletes the draft.
+    """
+
+    __tablename__ = "draft"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    farmer_id: Mapped[str] = mapped_column(ForeignKey("farmer.id"), index=True)
+    field_id: Mapped[str] = mapped_column(ForeignKey("field.id"), index=True)
+    details: Mapped[str] = mapped_column(Text, default="{}")     # JSON: crop, product, ...
+    log_path: Mapped[str] = mapped_column(String(500), default="")
+    log_name: Mapped[str] = mapped_column(String(300), default="")
+    preview: Mapped[str] = mapped_column(Text, default="")       # JSON: record-shaped, unsigned
+    sample_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    farmer: Mapped[Farmer] = relationship()
+    field: Mapped[Field] = relationship()
+
+
 class ImmutableRecordError(RuntimeError):
     """Raised when code tries to edit or delete a signed record."""
 
@@ -215,8 +239,22 @@ def make_engine(url: str) -> Engine:
     return engine
 
 
+def _add_missing_columns(engine: Engine) -> None:
+    """Databases made by an earlier version: add columns introduced since."""
+    from sqlalchemy import inspect, text
+    wanted = {"field": {"crop": "VARCHAR(100) NOT NULL DEFAULT ''"}}
+    inspector = inspect(engine)
+    for table, columns in wanted.items():
+        have = {c["name"] for c in inspector.get_columns(table)}
+        for name, ddl in columns.items():
+            if name not in have:
+                with engine.begin() as con:
+                    con.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
+
 def init_db(url: str) -> sessionmaker:
     """Create tables if needed and return a session factory."""
     engine = make_engine(url)
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
     return sessionmaker(engine, expire_on_commit=False)
