@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ t('web_title') }}</title>
+<style>
+  :root {
+    --ink: #1f2428; --muted: #5f6b76; --rule: #d8dee4; --bg: #f6f5f1; --card: #ffffff;
+    --brand: #14532d; --ok: #166534; --ok-bg: #e7f5ec; --bad: #a4161a; --bad-bg: #fdeaea;
+    --off: #4a5560; --off-bg: #eceff1; --amber-bg: #fff4d6; --amber-ink: #8a5a00;
+    --sprayed: #3a9d5d; --missed: #d93025; --overlap: #f5a623;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+           gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .brand { font-weight: 800; letter-spacing: .06em; color: var(--brand); font-size: 14px; }
+  nav a { color: var(--muted); text-decoration: none; margin-left: 12px; font-size: 14px; }
+  nav a.on { color: var(--ink); font-weight: 700; text-decoration: underline; }
+  .sample { background: var(--amber-bg); color: var(--amber-ink); font-weight: 700;
+            padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; text-align: center; }
+  .status { border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; border: 2px solid; }
+  .status h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.15; }
+  .status p { margin: 0; }
+  .verified { background: var(--ok-bg); border-color: var(--ok); }
+  .verified h1 { color: var(--ok); }
+  .modified { background: var(--bad-bg); border-color: var(--bad); }
+  .modified h1 { color: var(--bad); }
+  .revoked, .expired, .not_found, .home { background: var(--off-bg); border-color: var(--off); }
+  .revoked h1, .expired h1, .not_found h1, .home h1 { color: var(--off); }
+  .note { background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+          padding: 10px 14px; margin-bottom: 14px; font-size: 15px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px;
+          padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em;
+             text-transform: uppercase; color: var(--muted); }
+  .map img { width: 100%; height: auto; display: block; }
+  .big { font-size: 52px; font-weight: 800; color: var(--brand); line-height: 1;
+         font-variant-numeric: tabular-nums; }
+  .big small { font-size: 16px; font-weight: 500; color: var(--muted); margin-left: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+  td:last-child { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+  td small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .details td:first-child { color: var(--muted); padding-right: 12px; }
+  .details td:last-child { font-weight: 500; overflow-wrap: anywhere; }
+  .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+  .sw.sprayed { background: var(--sprayed); } .sw.missed { background: var(--missed); }
+  .sw.overlap { background: var(--overlap); }
+  .hash { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+          overflow-wrap: anywhere; color: var(--ink); }
+  .label { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .actions a { display: inline-block; margin: 4px 10px 4px 0; padding: 9px 14px;
+               border-radius: 8px; background: var(--brand); color: #fff;
+               text-decoration: none; font-weight: 650; font-size: 15px; }
+  .actions a.alt { background: #fff; color: var(--brand); border: 1px solid var(--brand); }
+  ul { margin: 8px 0 0; padding-left: 20px; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .big { font-size: 44px; } .status h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="brand">NOMAD ATLAS</span>
+    {% if token %}
+    <nav aria-label="Language">
+      {% for code, name in languages.items() %}
+      <a href="/v/{{ token }}?lang={{ code }}"{% if code == lang %} class="on"{% endif %}>{{ name }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </header>
+
+  {% if status == 'verified' and payload.sample_data %}
+  <div class="sample">{{ t('sample_notice') }}{% if lang != 'en' %} · {{ sample_notice_en }}{% endif %}</div>
+  {% endif %}
+
+  <section class="status {{ status }}" data-status="{{ status }}">
+    {% if status == 'home' %}
+      <h1>Nomad Atlas</h1>
+      <p>{{ t('scan_to_verify') }}.</p>
+    {% else %}
+      <h1>{{ t('st_' + status) }}</h1>
+      <p>{{ t('web_' + status) }}</p>
+    {% endif %}
+  </section>
+
+  {% if status == 'modified' %}
+  <div class="card">
+    <h2>{{ t('web_problems') }}</h2>
+    <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+    <div class="label">{{ t('record') }}</div>
+    <div class="hash">{{ record_id }} · {{ t('version') }} {{ version }}</div>
+    <div class="label">{{ t('record_hash') }} (signed)</div>
+    <div class="hash">{{ stored_sha256 }}</div>
+    <div class="label">{{ t('record_hash') }} (recomputed)</div>
+    <div class="hash">{{ recomputed_sha256 or '—' }}</div>
+  </div>
+  {% endif %}
+
+  {% if status == 'verified' %}
+    {% if newer_version %}
+    <div class="note">{{ t('web_newer', v=newer_version, this=version) }}</div>
+    {% endif %}
+    {% if payload.supersedes_sha256 %}
+    <div class="note">{{ t('supersedes', reason=payload.amendment_reason or '—') }}</div>
+    {% endif %}
+    {% if not is_owner_link %}
+    <div class="note">{{ t('shared_with') }}: <strong>{{ recipient }}</strong>{% if expires %} · {{ t('valid_until', date=expires) }}{% endif %}</div>
+    {% endif %}
+
+    <div class="grid">
+      <div class="card map">
+        <h2>{{ t('web_map') }}</h2>
+        <img src="/v/{{ token }}/map.png?lang={{ lang }}" alt="{{ t('web_map') }}" width="624" height="832">
+      </div>
+      <div class="card">
+        <h2>{{ t('key_numbers') }}</h2>
+        <div class="big">{{ coverage }}%<small>{{ t('coverage') }}</small></div>
+        <table style="margin-top:14px">
+          {% for label, value, note, swatch in numbers %}
+          <tr>
+            <td>{% if swatch %}<span class="sw {{ swatch }}"></span>{% endif %}{{ label }}</td>
+            <td>{{ value }}{% if note %}<small>{{ note }}</small>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% if estimated %}<p class="label">{{ t('estimated_note') }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>{{ t('job_details') }}</h2>
+      <table class="details">
+        {% for label, value in details %}
+        <tr><td>{{ label }}</td><td>{{ value }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>{{ t('st_verified') }}</h2>
+      <div>{{ t('record') }} <span class="hash">{{ record_id }}</span> · {{ t('version') }} {{ version }} · {{ created }}</div>
+      {% if confirmed %}<div>{{ t('web_confirmed', date=confirmed) }}</div>{% endif %}
+      <div class="label">{{ t('record_hash') }}</div>
+      <div class="hash">{{ recomputed_sha256 }}</div>
+      <div class="label">{{ t('log_hash') }}</div>
+      <div class="hash">{{ log_sha256 }}</div>
+      <div class="label">{{ t('signed_by', key=key_id) }}</div>
+      <div class="actions" style="margin-top:12px">
+        <a href="/v/{{ token }}/report.pdf?lang={{ lang }}">{{ t('web_download_pdf') }}</a>
+        <a class="alt" href="/v/{{ token }}/record.json">{{ t('web_download_json') }}</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <footer>
+    {% if status != 'home' %}{{ t('web_checked') }}: {{ checked }} · {% endif %}{{ t('footer') }}
+  </footer>
+</main>
+</body>
+</html>

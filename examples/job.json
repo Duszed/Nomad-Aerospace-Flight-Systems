@@ -1,0 +1,27 @@
+{
+  "farmer": {
+    "name": "Namuna Fermer (sample)",
+    "phone": "+998 90 000 00 01",
+    "language": "uz"
+  },
+  "field_name": "Sample field 4.2 ha",
+  "crop": "Cotton (sample)",
+  "product": "Sample product 25 EC",
+  "batch": "SAMPLE-0001",
+  "planned_rate_l_ha": 15.0,
+  "swath_m": 7.0,
+  "pilot": "Sample Pilot",
+  "drone_id": "K30-SIM-001",
+  "weather": {
+    "temperature_c": 24.0,
+    "wind_ms": 2.5,
+    "wind_direction": "NE",
+    "humidity_pct": 41.0
+  },
+  "sprayer": {
+    "kind": "servo",
+    "channel": 9,
+    "pwm_on": 1150
+  },
+  "sample_data": true
+}

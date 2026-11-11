@@ -84,6 +84,9 @@ Blade length: 1082 mm | Pitch: 14 in | Dual-bolt carbon hub mount
 
 * `/config` — Production ArduPilot parameter stack for the K30 airframe
 * `/telemetry` — Ground gateway (Python) and field edge-node firmware (C++)
+* `/atlas` — **Nomad Atlas**, the spray-record platform: flight log → signed
+  record → PDF → Telegram → shareable, verifiable link. See [`ATLAS.md`](ATLAS.md);
+  `python -m atlas demo` runs it end to end with no drone
 * `SPECS.md` — Master platform specification (single source of truth)
 
 ---

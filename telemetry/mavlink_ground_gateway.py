@@ -16,14 +16,27 @@ This gateway OBSERVES AND ALERTS ONLY. All failsafe execution (battery
 RTL/Land, link loss, geofence) is performed autonomously by the flight
 controller per the /config parameter stack. Ground software never
 commands the aircraft.
+
+Sprayer observation (for Nomad Atlas as-applied records)
+--------------------------------------------------------
+The gateway also forwards the signals needed to know when the sprayer was
+actually on: SERVO_OUTPUT_RAW (pump PWM on SERVO9, see SPECS.md),
+RELAY_STATUS, and NAMED_VALUE_FLOAT (e.g. a flow meter published by an
+onboard script). These are read-only telemetry, like everything else here.
 """
 
+import argparse
 import json
 import logging
+import os
 import sys
 import time
 
-from pymavlink import mavutil
+# MAVLink 2 dialect: SERVO_OUTPUT_RAW carries channels 9-16 (the spray pump
+# is SERVO9) only as MAVLink 2 extension fields. Must be set before import.
+os.environ.setdefault("MAVLINK20", "1")
+
+from pymavlink import mavutil  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Configuration - values defer to SPECS.md (14S system)
@@ -48,7 +61,15 @@ STREAM_INTERVALS_US = {
     mavutil.mavlink.MAVLINK_MSG_ID_SYS_STATUS: 1_000_000,           # 1 Hz
     mavutil.mavlink.MAVLINK_MSG_ID_GLOBAL_POSITION_INT: 200_000,    # 5 Hz
     mavutil.mavlink.MAVLINK_MSG_ID_VFR_HUD: 100_000,                # 10 Hz
+    mavutil.mavlink.MAVLINK_MSG_ID_SERVO_OUTPUT_RAW: 200_000,       # 5 Hz
 }
+
+# Message types forwarded to the NDJSON stream
+FORWARDED_TYPES = [
+    "VFR_HUD", "GLOBAL_POSITION_INT", "SYS_STATUS",
+    "SERVO_OUTPUT_RAW", "RELAY_STATUS", "NAMED_VALUE_FLOAT",
+]
+SERVO_CHANNELS = 16
 
 logging.basicConfig(
     level=logging.INFO,
@@ -128,6 +149,60 @@ class NomadTelemetryGateway:
             self._batt_alarm_state = state
         return state
 
+    # -- MAVLink -> NDJSON row (pure, unit-testable) -------------------------
+
+    def to_payload(self, msg) -> dict:
+        """Convert one MAVLink message into one NDJSON row."""
+        kind = msg.get_type()
+        payload = {"ts": round(time.time(), 3), "type": kind}
+
+        if kind == "VFR_HUD":
+            payload.update(
+                groundspeed_ms=round(msg.groundspeed, 2),
+                heading_deg=msg.heading,
+                alt_msl_m=round(msg.alt, 2),
+                climb_ms=round(msg.climb, 2),
+                throttle_pct=msg.throttle,
+            )
+
+        elif kind == "GLOBAL_POSITION_INT":
+            payload.update(
+                lat=msg.lat / 1e7,
+                lon=msg.lon / 1e7,
+                alt_rel_m=round(msg.relative_alt / 1000.0, 2),
+                # flight-controller clock: lets consumers integrate over
+                # aircraft time rather than gateway wall-clock time
+                time_boot_ms=msg.time_boot_ms,
+            )
+
+        elif kind == "SYS_STATUS":
+            if msg.voltage_battery != MAV_VOLTAGE_UNKNOWN:
+                voltage = msg.voltage_battery / 1000.0  # mV -> V
+                payload["battery_voltage_v"] = round(voltage, 2)
+                payload["battery_state"] = self._check_battery(voltage)
+            if msg.current_battery != MAV_CURRENT_UNKNOWN:
+                payload["battery_current_a"] = round(
+                    msg.current_battery / 100.0, 1)  # cA -> A
+
+        elif kind == "SERVO_OUTPUT_RAW":
+            # index 0 = SERVO1 ... index 8 = SERVO9 (spray pump, SPECS.md)
+            payload["servo_raw"] = [
+                getattr(msg, "servo%d_raw" % n, 0)
+                for n in range(1, SERVO_CHANNELS + 1)
+            ]
+
+        elif kind == "RELAY_STATUS":
+            payload.update(relay_on=msg.on, relay_present=msg.present)
+
+        elif kind == "NAMED_VALUE_FLOAT":
+            name = msg.name
+            if isinstance(name, bytes):
+                name = name.decode("ascii", "ignore")
+            payload.update(name=name.rstrip("\x00"),
+                           value=round(float(msg.value), 4))
+
+        return payload
+
     # -- main loop -----------------------------------------------------------
 
     def run(self) -> None:
@@ -136,7 +211,7 @@ class NomadTelemetryGateway:
 
         while True:
             msg = self.vehicle.recv_match(
-                type=["VFR_HUD", "GLOBAL_POSITION_INT", "SYS_STATUS"],
+                type=FORWARDED_TYPES,
                 blocking=True,
                 timeout=1.0,
             )
@@ -150,39 +225,21 @@ class NomadTelemetryGateway:
                 continue
 
             last_msg_time = time.monotonic()
-            payload = {"ts": round(time.time(), 3), "type": msg.get_type()}
-
-            if msg.get_type() == "VFR_HUD":
-                payload.update(
-                    groundspeed_ms=round(msg.groundspeed, 2),
-                    heading_deg=msg.heading,
-                    alt_msl_m=round(msg.alt, 2),
-                    climb_ms=round(msg.climb, 2),
-                    throttle_pct=msg.throttle,
-                )
-
-            elif msg.get_type() == "GLOBAL_POSITION_INT":
-                payload.update(
-                    lat=msg.lat / 1e7,
-                    lon=msg.lon / 1e7,
-                    alt_rel_m=round(msg.relative_alt / 1000.0, 2),
-                )
-
-            elif msg.get_type() == "SYS_STATUS":
-                if msg.voltage_battery != MAV_VOLTAGE_UNKNOWN:
-                    voltage = msg.voltage_battery / 1000.0  # mV -> V
-                    payload["battery_voltage_v"] = round(voltage, 2)
-                    payload["battery_state"] = self._check_battery(voltage)
-                if msg.current_battery != MAV_CURRENT_UNKNOWN:
-                    payload["battery_current_a"] = round(
-                        msg.current_battery / 100.0, 1)  # cA -> A
+            payload = self.to_payload(msg)
 
             sys.stdout.write(json.dumps(payload) + "\n")
             sys.stdout.flush()
 
 
 def main() -> None:
-    gateway = NomadTelemetryGateway()
+    ap = argparse.ArgumentParser(description="NOMAD MAVLink ground gateway")
+    ap.add_argument("--connection",
+                    default=os.environ.get("NOMAD_GW_CONNECTION", CONNECTION_STRING),
+                    help="pymavlink connection string (default %(default)s)")
+    ap.add_argument("--baud", type=int, default=BAUD_RATE)
+    args = ap.parse_args()
+
+    gateway = NomadTelemetryGateway(args.connection, args.baud)
     gateway.connect()
     try:
         gateway.run()
