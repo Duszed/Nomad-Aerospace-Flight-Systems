@@ -1,0 +1,33 @@
+# Nomad Atlas server: verify page + Telegram bot, sharing one data folder.
+#
+#   cp .env.example .env      # set ATLAS_BASE_URL, ATLAS_BOT_TOKEN, ATLAS_SYNC_TOKEN
+#   docker compose up -d --build
+#
+# Records arrive from field laptops through /api/sync/record. Put a TLS
+# reverse proxy (Caddy, nginx) in front of port 8000 for a public address.
+# All state is in ./data on this host - nothing is stored anywhere else.
+
+services:
+  web:
+    build: .
+    command: ["python", "-m", "atlas", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    env_file: .env
+    environment:
+      ATLAS_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  bot:
+    build: .
+    command: ["python", "-m", "atlas", "bot"]
+    env_file: .env
+    environment:
+      ATLAS_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    depends_on:
+      - web
+    restart: unless-stopped

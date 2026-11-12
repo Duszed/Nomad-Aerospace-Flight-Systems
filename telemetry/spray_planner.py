@@ -164,6 +164,25 @@ def _build_waypoints(passes: int, pass_length_m: float, swath_m: float,
     return wps
 
 
+def field_boundary_lonlat(area_ha: float, field_width_m: float,
+                          origin_lat: float = 40.410983,
+                          origin_lon: float = 68.841300) -> list[tuple[float, float]]:
+    """Corners of the rectangular field plan_mission() covers, as (lon, lat).
+
+    Uses the same flat-earth approximation as the waypoints, so the planned
+    passes sit exactly inside this boundary. Closed ring (first == last).
+    """
+    if area_ha <= 0 or field_width_m <= 0:
+        raise ValueError("area and field width must be positive")
+    length_m = area_ha * 10_000.0 / field_width_m
+    m_per_deg_lat = 111_320.0
+    m_per_deg_lon = 111_320.0 * math.cos(math.radians(origin_lat))
+    east = origin_lon + field_width_m / m_per_deg_lon
+    north = origin_lat + length_m / m_per_deg_lat
+    return [(origin_lon, origin_lat), (east, origin_lat), (east, north),
+            (origin_lon, north), (origin_lon, origin_lat)]
+
+
 # MAVLink frames and commands used in the exported mission
 FRAME_GLOBAL = 0                 # home row: absolute altitude
 FRAME_GLOBAL_RELATIVE_ALT = 3    # takeoff: height above home
