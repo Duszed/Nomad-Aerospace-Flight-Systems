@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Atlas runtime data: databases, flight logs, reports, signing keys.
+# Customer data and private keys never go into git.
+data/
+*.pem
+.env
+
+# local tooling
+.claude/

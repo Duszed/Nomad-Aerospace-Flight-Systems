@@ -1,0 +1,18 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<h1>{{ t('d_new_job') }} <small>{{ draft.farmer.name }} · {{ draft.field.name }}</small>
+  {% if draft.sample_data %}{{ m.sample_chip() }}{% endif %}</h1>
+{{ m.steps(step) }}
+<div class="flash warn">{{ t('d_draft_notice') }}</div>
+{{ m.results(res, svg) }}
+<p class="note">{{ t('flight') }}: {{ draft.log_name }} · <a href="/drafts/{{ draft.id }}/flight">{{ t('d_change_log') }}</a></p>
+<div class="card signbar">
+  <p class="note">{{ t('d_sign_hint') }}</p>
+  <div class="actions">
+    <a class="btn ghost" href="/drafts/{{ draft.id }}/details">‹ {{ t('d_back') }}</a>
+    <a class="btn" href="/drafts/{{ draft.id }}/preview.pdf?lang={{ lang }}" target="_blank" rel="noopener">{{ t('d_preview_pdf') }}</a>
+    <form method="post" action="/drafts/{{ draft.id }}/sign" data-busy="{{ t('d_reading_log') }}"><button class="btn primary big">{{ t('d_sign_send') }}</button></form>
+  </div>
+</div>
+{% endblock %}

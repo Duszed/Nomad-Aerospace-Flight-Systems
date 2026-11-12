@@ -1,0 +1,98 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet.css"><script src="/static/vendor/leaflet.js" defer></script>{% endblock %}
+{% block main %}
+<div class="split">
+  <aside class="card side">
+    <h2>{{ t('d_farmers') }}</h2>
+    <input type="search" name="q" value="{{ q }}" placeholder="{{ t('d_search') }}" autocomplete="off"
+           hx-get="/farmers/list" hx-trigger="input changed delay:250ms, search" hx-target="#farmer-list"
+           hx-vals='{"id": "{{ farmer.id if farmer else '' }}"}'>
+    <div id="farmer-list">{% include "dash/_farmer_list.html" %}</div>
+    <details class="adder" {{ 'open' if not total }}>
+      <summary class="btn">+ {{ t('d_add_farmer') }}</summary>
+      <form method="post" action="/farmers" class="stack">
+        <label>{{ t('d_name') }}<input name="name" required maxlength="200"></label>
+        <label>{{ t('d_phone') }}<input name="phone" required inputmode="tel" placeholder="+998 90 123 45 67"></label>
+        <label>{{ t('d_language') }}
+          <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}">{{ name }}</option>{% endfor %}</select></label>
+        <button class="btn primary">{{ t('d_save') }}</button>
+      </form>
+    </details>
+  </aside>
+
+  <section class="main">
+  {% if farmer %}
+    <div class="card">
+      <div class="headrow">
+        <h2>{{ farmer.name }}</h2>
+        <a class="btn" href="/jobs/new?farmer={{ farmer.id }}">+ {{ t('d_new_job') }}</a>
+      </div>
+      <p class="facts">
+        <span>{{ t('d_phone') }}: <b>{{ farmer.phone }}</b></span>
+        <span>{{ t('d_language') }}: <b>{{ languages[farmer.language] }}</b></span>
+        {% if farmer.telegram_chat_id %}<span class="dot on">{{ t('d_tg_linked') }}</span>
+        {% else %}<span class="dot off">{{ t('d_tg_not_linked') }}</span>{% endif %}
+      </p>
+      {% if not farmer.telegram_chat_id %}<p class="note">{{ t('d_tg_hint') }}</p>{% endif %}
+      <details class="adder">
+        <summary class="btn small ghost">{{ t('d_edit') }}</summary>
+        <form method="post" action="/farmers/{{ farmer.id }}" class="stack">
+          <label>{{ t('d_name') }}<input name="name" required maxlength="200" value="{{ farmer.name }}"></label>
+          <label>{{ t('d_phone') }}<input name="phone" required inputmode="tel" value="{{ farmer.phone }}"></label>
+          <label>{{ t('d_language') }}
+            <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if code == farmer.language }}>{{ name }}</option>{% endfor %}</select></label>
+          <button class="btn primary">{{ t('d_save') }}</button>
+        </form>
+      </details>
+    </div>
+
+    <h2>{{ t('d_fields') }}</h2>
+    {% for f in fields %}
+    <div class="card field">
+      <div class="fieldhead">
+        <div>
+          <h3>{{ f.field.name }}</h3>
+          <p class="facts"><span>{{ t('crop') }}: <b>{{ f.field.crop or '—' }}</b></span>
+            <span>{{ t('d_area') }}: <b>{{ num(f.field.area_ha, 2) }} {{ t('u_ha') }}</b></span></p>
+        </div>
+        <div class="thumb">{{ f.svg }}</div>
+      </div>
+      <details class="adder">
+        <summary class="btn small ghost">{{ t('d_edit') }}</summary>
+        <form method="post" action="/fields/{{ f.field.id }}" enctype="multipart/form-data" class="stack">
+          <div class="grid2">
+            <label>{{ t('d_field_name') }}<input name="name" required maxlength="200" value="{{ f.field.name }}"></label>
+            <label>{{ t('crop') }}<input name="crop" maxlength="100" value="{{ f.field.crop }}"></label>
+          </div>
+          <label>{{ t('d_boundary') }} – {{ t('d_upload_boundary') }}<input type="file" name="boundary_file" accept=".geojson,.json,.kml,.plan"></label>
+          <p class="note">{{ t('d_or_draw') }}. {{ t('d_keep_boundary') }}</p>
+          {{ m.drawbox(center, f.geojson) }}
+          <button class="btn primary">{{ t('d_save') }}</button>
+        </form>
+      </details>
+    </div>
+    {% else %}<p class="empty">{{ t('d_no_fields') }}</p>{% endfor %}
+
+    <div class="card">
+      <details class="adder" {{ 'open' if not fields }}>
+        <summary class="btn">+ {{ t('d_add_field') }}</summary>
+        <form method="post" action="/farmers/{{ farmer.id }}/fields" enctype="multipart/form-data" class="stack">
+          <div class="grid2">
+            <label>{{ t('d_field_name') }}<input name="name" required maxlength="200"></label>
+            <label>{{ t('crop') }}<input name="crop" maxlength="100"></label>
+          </div>
+          <label>{{ t('d_boundary') }} – {{ t('d_upload_boundary') }}<input type="file" name="boundary_file" accept=".geojson,.json,.kml,.plan"></label>
+          <p class="note">{{ t('d_or_draw') }}</p>
+          {{ m.drawbox(center) }}
+          <p class="note">{{ t('d_map_hint') }}</p>
+          <button class="btn primary">{{ t('d_save') }}</button>
+        </form>
+      </details>
+    </div>
+  {% else %}
+    <div class="card"><p class="empty">{{ t('d_no_farmers') if not total else t('d_pick_farmer') }}</p></div>
+  {% endif %}
+  </section>
+</div>
+{% endblock %}

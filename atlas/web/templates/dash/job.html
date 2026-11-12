@@ -1,0 +1,98 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+{% set p = v.payload %}
+<div class="headrow">
+  <h1>{{ v.farmer.name }} <small>{{ v.field.name }} · {{ v.local.strftime('%d.%m.%Y %H:%M') }}</small>
+    {% if v.sample %}{{ m.sample_chip() }}{% endif %}</h1>
+  {% if ok %}
+  <div class="actions">
+    {% for code in languages %}<a class="btn{{ ' primary' if code == lang }}" href="/jobs/{{ v.job.id }}/report.pdf?lang={{ code }}" target="_blank" rel="noopener">{{ t('d_download_pdf') if code == lang else 'PDF' }} {{ code|upper }}</a>{% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{% if ok %}
+{{ m.results(v.res, svg) }}
+{% else %}
+<div class="flash err big">{{ t('d_sig_bad') }}
+  <ul>{% for problem in v.check.problems %}<li>{{ problem }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="grid2">
+  <div class="card">
+    <h3>{{ t('d_signature') }}</h3>
+    {% if ok %}<p class="dot on">{{ t('d_sig_ok', v=v.record.version, key=v.record.key_id) }}</p>
+    {% else %}<p class="dot bad">{{ t('st_modified') }}</p>{% endif %}
+    <p class="hash">{{ t('record_hash') }}<code>{{ v.record.payload_sha256 }}</code></p>
+    {% if ok %}<p class="hash">{{ t('log_hash') }}<code>{{ p.input.log_sha256 }}</code></p>{% endif %}
+
+    <h3>{{ t('d_delivery') }}</h3>
+    <p>{{ m.chip(v.delivery.state) }}
+      {% if v.delivery.at %}<small>{{ dt(v.delivery.at) }}</small>{% endif %}</p>
+    {% if v.delivery.state == 'queued' %}<p class="note">{{ t('d_why_' ~ v.delivery.why) }}</p>{% endif %}
+    {% if v.delivery.state in ('synced', 'sync_wait') %}<p class="note">{{ t('d_why_server') }}</p>{% endif %}
+    {% if v.delivery.state == 'failed' and v.delivery.why %}<p class="note">{{ v.delivery.why }}</p>{% endif %}
+    {% if not v.farmer.telegram_chat_id and v.delivery.state == 'queued' %}<p class="note">{{ t('d_tg_hint') }}</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3>{{ t('d_shares') }}</h3>
+    {% for row in v.shares %}
+    <div class="share {{ row.state }}">
+      <span><b>{{ t('rcp_' ~ row.share.recipient_type) }}</b>
+        <small>
+          {% if row.state == 'active' %}{{ t('d_expires', when=dt(row.share.expires_at, False)) if row.share.expires_at else '' }}
+          {% elif row.state == 'revoked' %}{{ t('d_revoked', when=dt(row.share.revoked_at, False)) }}
+          {% else %}{{ t('d_expired') }}{% endif %}
+          · {{ t('d_opened_n', n=row.opened) }} · {{ t('version') }} {{ row.version }}</small></span>
+      {% if row.state == 'active' %}
+      <form method="post" action="/shares/{{ row.share.id }}/revoke" data-confirm="{{ t('d_revoke') }}?"><button class="btn small danger">{{ t('d_revoke') }}</button></form>
+      {% endif %}
+    </div>
+    {% else %}<p class="note">{{ t('d_no_shares') }}</p>{% endfor %}
+    {% for link in owner_links %}
+    <p class="note">{{ t('d_owner_link') }} · <a href="{{ link.url }}" target="_blank" rel="noopener">{{ t('d_open_verify') }}</a></p>
+    {% endfor %}
+  </div>
+</div>
+
+{% if ok %}
+<div class="grid2">
+  <div class="card">
+    <h3>{{ t('job_details') }}</h3>
+    <dl class="plain">
+      <dt>{{ t('crop') }}</dt><dd>{{ p.job.crop }}</dd>
+      <dt>{{ t('product') }}</dt><dd>{{ p.job.product }}</dd>
+      <dt>{{ t('batch') }}</dt><dd>{{ p.job.batch or '—' }}</dd>
+      <dt>{{ t('planned_rate') }}</dt><dd>{{ num(p.job.planned_rate_l_ha, 1) }} {{ t('u_l_ha') }}</dd>
+      <dt>{{ t('swath') }}</dt><dd>{{ num(p.job.swath_m, 1) }} {{ t('u_m') }}</dd>
+      <dt>{{ t('pilot') }}</dt><dd>{{ p.job.pilot }}</dd>
+      <dt>{{ t('drone_id') }}</dt><dd>{{ p.job.drone_id }}</dd>
+      <dt>{{ t('started') }}</dt><dd>{{ dt(p.job.started_utc) }}</dd>
+      <dt>{{ t('ended') }}</dt><dd>{{ dt(p.job.ended_utc) }}</dd>
+      <dt>{{ t('weather') }}</dt><dd>{% set w = p.weather %}{% if w.temperature_c is not none %}{{ num(w.temperature_c, 0) }} °C{% endif %}{% if w.humidity_pct is not none %} · {{ t('humidity') }} {{ num(w.humidity_pct, 0) }}%{% endif %}{% if w.wind_ms is not none %} · {{ t('wind') }} {{ num(w.wind_ms, 1) }} {{ t('u_ms') }} {{ w.wind_direction or '' }}{% endif %}</dd>
+      <dt>{{ t('sprayer_source') }}</dt><dd>{{ p.input.sprayer_source }}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h3>{{ t('d_versions') }}</h3>
+    {% for r in v.versions|reverse %}
+    <p class="note">{{ t('version') }} {{ r.version }} · {{ dt(r.created_at) }} · <code>{{ r.payload_sha256[:16] }}…</code></p>
+    {% endfor %}
+    {% if p.amendment_reason %}<p class="note">{{ t('d_reason') }}: {{ p.amendment_reason }}</p>{% endif %}
+    <details class="adder">
+      <summary class="btn small ghost">{{ t('d_correct') }}</summary>
+      <form method="post" action="/jobs/{{ v.job.id }}/amend" class="stack">
+        <p class="note">{{ t('d_correct_hint') }}</p>
+        <div class="grid2">
+          {% for key in amendable %}<label>{{ t(key) }}<input name="{{ key }}" value="{{ p.job[key] or '' }}" maxlength="200"></label>{% endfor %}
+        </div>
+        <label>{{ t('d_reason') }}<input name="reason" required maxlength="300"></label>
+        <button class="btn primary">{{ t('d_create_version') }}</button>
+      </form>
+    </details>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

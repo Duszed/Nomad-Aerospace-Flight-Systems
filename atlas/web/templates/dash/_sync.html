@@ -1,0 +1,16 @@
+<div class="card stat sync" id="sync-card" hx-get="/ui/sync" hx-trigger="every 15s" hx-swap="outerHTML">
+  <h3>{{ t('d_sync') }}</h3>
+  {% if sync_state == 'demo' %}
+    <strong class="dot off">{{ t('d_demo_mode') }}</strong>
+    <small>{{ t('d_demo_no_send') }}</small>
+  {% elif sync_state == NOT_SET_UP %}
+    <strong class="dot off">{{ t('d_not_set_up') }}</strong>
+    <small>{{ t('d_not_set_up_hint') }}</small>
+  {% else %}
+    {% if sync_state == ONLINE %}<strong class="dot on">{{ t('d_online') }}</strong>
+    {% elif sync_state == OFFLINE %}<strong class="dot bad">{{ t('d_offline') }}</strong>
+    {% else %}<strong class="dot off">{{ t('d_checking') }}</strong>{% endif %}
+    <small>{% if waiting %}{{ t('d_waiting_n', n=waiting) }}{% else %}{{ t('d_nothing_waiting') }}{% endif %}</small>
+    <small>{{ t('d_sends_via_server') if server_mode else t('d_sends_via_bot') }}</small>
+  {% endif %}
+</div>

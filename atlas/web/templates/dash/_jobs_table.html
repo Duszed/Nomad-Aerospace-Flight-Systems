@@ -1,0 +1,5 @@
+{% import "dash/_macros.html" as m with context %}
+<div class="card list">
+  {% for v in rows %}{{ m.job_row(v) }}{% else %}<p class="empty">{{ t('d_no_jobs') }}</p>{% endfor %}
+</div>
+<p class="note count">{{ rows|length }} / {{ total }}</p>

@@ -1,0 +1,7 @@
+<div id="live-status" class="livestatus {{ live.state }}"{% if live.state != IDLE %} hx-get="/drafts/{{ draft_id }}/live/status" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  {% if live.state == 'waiting' %}<span class="pulse"></span>{{ t('d_live_waiting') }} · {{ live.seconds }} s
+  {% elif live.state == 'receiving' %}<span class="pulse on"></span>{{ t('d_live_receiving', n=live.fixes) }}
+    {% if live.sim_done %}<br><b>{{ t('d_live_sim_done') }}</b>{% endif %}
+  {% elif live.state == ERROR %}<span class="c-missed">{{ t('d_live_error', msg=live.error) }}</span>
+  {% endif %}
+</div>

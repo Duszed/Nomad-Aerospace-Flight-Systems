@@ -1,0 +1,57 @@
+{% extends "dash/base.html" %}
+{% block main %}
+<h1>{{ t('d_settings') }}</h1>
+{% if demo %}<div class="flash warn">{{ t('d_demo_settings_locked') }}</div>{% endif %}
+<form method="post" action="/settings" class="stack" autocomplete="off">
+  <div class="grid2">
+    <div class="card stack">
+      <h3>Telegram</h3>
+      <label>{{ t('d_bot_token') }}
+        <span class="dot {{ 'on' if has_token else 'off' }}">{{ t('d_is_set') if has_token else t('d_not_set') }}</span>
+        <input type="password" name="bot_token" autocomplete="new-password" placeholder="{{ t('d_keep_secret') if has_token else '123456:ABC…' }}">
+        <small>{{ t('d_bot_token_hint') }}</small></label>
+      {% if has_token %}<label class="check"><input type="checkbox" name="remove_token" value="1"> {{ t('d_remove') }}</label>{% endif %}
+
+      <h3>{{ t('d_sync') }}</h3>
+      <label>{{ t('d_server_url') }}<input name="server_url" value="{{ s.server_url }}" placeholder="https://atlas.example.uz" inputmode="url"></label>
+      <label>{{ t('d_sync_password') }}
+        <span class="dot {{ 'on' if has_sync else 'off' }}">{{ t('d_is_set') if has_sync else t('d_not_set') }}</span>
+        <input type="password" name="sync_token" autocomplete="new-password" placeholder="{{ t('d_keep_secret') if has_sync else '' }}"></label>
+      {% if has_sync %}<label class="check"><input type="checkbox" name="remove_sync" value="1"> {{ t('d_remove') }}</label>{% endif %}
+      <small class="note">{{ t('d_server_hint') }}</small>
+    </div>
+
+    <div class="card stack">
+      <h3>{{ t('sprayer_source') }}</h3>
+      <div class="grid3">
+        <label>{{ t('sprayer_source') }}
+          <select name="kind">{% for k in kinds %}<option value="{{ k }}" {{ 'selected' if k == s.sprayer.kind }}>{{ t('d_src_' ~ k) }}</option>{% endfor %}</select></label>
+        <label>{{ t('d_channel') }}<input name="channel" inputmode="numeric" value="{{ s.sprayer.channel }}"></label>
+        <label>{{ t('d_pwm_on') }}<input name="pwm_on" inputmode="numeric" value="{{ s.sprayer.pwm_on }}"></label>
+      </div>
+      <label>{{ t('d_swath_m') }}<input name="swath_m" inputmode="decimal" value="{{ s.swath_m }}"></label>
+      <label>{{ t('d_drone_conn') }}<input name="drone_connection" value="{{ s.drone_connection }}"><small>{{ t('d_drone_conn_hint') }}</small></label>
+      <label>{{ t('d_default_lang') }}
+        <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if code == s.language }}>{{ name }}</option>{% endfor %}</select></label>
+    </div>
+  </div>
+  <div class="actions"><button class="btn primary big">{{ t('d_save') }}</button></div>
+</form>
+
+<div class="grid2">
+  <div class="card">
+    <h3>{{ t('d_signing_key') }}</h3>
+    <p class="dot on">{{ t('d_key_present', key=key_id) }}</p>
+    <p class="hash">{{ t('d_public_key') }}<code>{{ public_key }}</code></p>
+  </div>
+  <div class="card">
+    <h3>{{ t('d_demo_mode') }}</h3>
+    <p class="note">{{ t('d_demo_hint') }} Sample data – not a customer record.</p>
+    <div class="actions left">
+      <form method="post" action="/demo/load" data-busy="{{ t('d_demo_loading') }}"><button class="btn">{{ t('d_load_demo') }}</button></form>
+      {% if demo %}<form method="post" action="/demo/clear"><button class="btn ghost">{{ t('d_clear_demo') }}</button></form>{% endif %}
+    </div>
+  </div>
+</div>
+<p class="note count">Nomad Atlas {{ version }}</p>
+{% endblock %}

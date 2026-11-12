@@ -22,6 +22,7 @@ pytest -v                 # 50 tests, no hardware required
 | `coverage_logger.py` | Consumes the gateway's NDJSON stream and produces an as-applied spray record: distance actually sprayed, area covered, chemical applied, with GPS-glitch rejection and a speed gate matching `SPRAY_SPEED_MIN`. This is the VRA ingest stage in the architecture diagram. |
 | `test_spray_planner.py` | 18 tests — swath geometry, consumables, timing, waypoint export, input validation. |
 | `test_coverage_logger.py` | 17 tests — geodesy, distance integration, speed gating, glitch rejection, serialisation. |
+| `test_atlas_extensions.py` | Tests for the additions that feed [Nomad Atlas](../ATLAS.md): sprayer signals in the gateway stream, explicit sprayer source and track capture in the coverage logger, simulator mission mode, and a check that the gateway still sends nothing but its stream-rate request. |
 
 ## Demonstrating the telemetry pipeline without hardware
 
@@ -39,6 +40,13 @@ The gateway connects, requests telemetry streams, and prints live NDJSON.
 As the simulated pack discharges it crosses the thresholds published in
 `SPECS.md`, and the gateway logs the LOW (47.6 V) and CRITICAL (46.2 V)
 transitions — the same events the flight controller acts on independently.
+
+To fly the demo field (4.2 ha, 7 m swath, 20 passes) with a pump signal
+instead of the battery ramp, use mission mode:
+
+```bash
+python simulate_telemetry.py --mission --speedup 40
+```
 
 ## Planning a spray mission
 

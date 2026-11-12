@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sample field 4.2 ha",
+        "note": "Sample data - not a customer record"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              68.8413,
+              40.410983
+            ],
+            [
+              68.8429517,
+              40.410983
+            ],
+            [
+              68.8429517,
+              40.4136779
+            ],
+            [
+              68.8413,
+              40.4136779
+            ],
+            [
+              68.8413,
+              40.410983
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

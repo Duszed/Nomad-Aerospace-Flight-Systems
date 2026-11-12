@@ -1,0 +1,23 @@
+{% extends "dash/base.html" %}
+{% import "dash/_macros.html" as m with context %}
+{% block main %}
+<h1>{{ t('d_new_job') }}</h1>
+{{ m.steps(step) }}
+<div class="card narrow">
+  {% if farmers %}
+  <form method="post" action="/jobs/new" class="stack">
+    <label>{{ t('farmer') }}
+      <select name="farmer_id" required hx-get="/jobs/new/fields" hx-trigger="change" hx-target="#field-select">
+        <option value="">{{ t('d_choose') }}</option>
+        {% for f in farmers %}<option value="{{ f.id }}" {{ 'selected' if f.id == chosen }}>{{ f.name }} · {{ f.phone }}</option>{% endfor %}
+      </select></label>
+    <label>{{ t('field') }}
+      <select name="field_id" id="field-select" required>{% include "dash/_field_options.html" %}</select></label>
+    <div class="actions"><a class="btn ghost" href="/">{{ t('d_cancel') }}</a><button class="btn primary big">{{ t('d_next') }} ›</button></div>
+  </form>
+  {% else %}
+  <p class="empty">{{ t('d_need_farmer') }}</p>
+  <div class="actions"><a class="btn primary" href="/farmers">{{ t('d_farmers') }}</a></div>
+  {% endif %}
+</div>
+{% endblock %}
